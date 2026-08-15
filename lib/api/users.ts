@@ -11,7 +11,12 @@ export async function getCurrentUser(
 
 export async function updateCurrentUser(
   getAuthToken: () => Promise<string | null>,
-  input: Partial<Pick<UserProfile, "timezone" | "preferredCurrency">>,
+  input: Partial<
+    Pick<
+      UserProfile,
+      "timezone" | "preferredCurrency" | "selectedTradingAccountId"
+    >
+  >,
 ) {
   return apiRequest<ApiDataResponse<UserProfile>>("/api/v1/users/me", {
     method: "PATCH",

@@ -3,8 +3,6 @@ import { listAccounts } from "@/lib/api/accounts";
 import {
   getAnalyticsSummary,
   getInstrumentPerformance,
-  getPlanCompliance,
-  getRiskStats,
   getStrategyPerformance,
 } from "@/lib/api/analytics";
 import { listTrades } from "@/lib/api/trades";
@@ -13,8 +11,6 @@ import type { TradingAccount } from "@/types/account";
 import type {
   AnalyticsSummary,
   InstrumentPerformance,
-  PlanComplianceGroup,
-  RiskStatGroup,
   StrategyPerformance,
 } from "@/types/analytics";
 import type { Trade } from "@/types/trade";
@@ -43,6 +39,8 @@ const EMPTY_SUMMARY: AnalyticsSummary = {
   longestLosingStreak: 0,
   currentWinningStreak: 0,
   currentLosingStreak: 0,
+  startingBalance: "0.00",
+  currentBalance: "0.00",
   currentOpenRisk: "0.00",
   sampleConfidence: "INSUFFICIENT",
   equityCurve: [],
@@ -52,26 +50,17 @@ const EMPTY_SUMMARY: AnalyticsSummary = {
 async function loadAnalytics(accountId?: string) {
   const query = accountId ? { tradingAccountId: accountId } : {};
 
-  const [
-    summaryResponse,
-    instrumentsResponse,
-    strategiesResponse,
-    planComplianceResponse,
-    riskStatsResponse,
-  ] = await Promise.all([
-    getAnalyticsSummary(getServerAuthToken, query),
-    getInstrumentPerformance(getServerAuthToken, query),
-    getStrategyPerformance(getServerAuthToken, query),
-    getPlanCompliance(getServerAuthToken, query),
-    getRiskStats(getServerAuthToken, query),
-  ]);
+  const [summaryResponse, instrumentsResponse, strategiesResponse] =
+    await Promise.all([
+      getAnalyticsSummary(getServerAuthToken, query),
+      getInstrumentPerformance(getServerAuthToken, query),
+      getStrategyPerformance(getServerAuthToken, query),
+    ]);
 
   return {
     summary: summaryResponse.data,
     instruments: instrumentsResponse.data,
     strategies: strategiesResponse.data,
-    planCompliance: planComplianceResponse.data,
-    riskStats: riskStatsResponse.data,
   };
 }
 
@@ -80,8 +69,6 @@ export default async function DashboardPage() {
   let summary: AnalyticsSummary = EMPTY_SUMMARY;
   let instruments: InstrumentPerformance[] = [];
   let strategies: StrategyPerformance[] = [];
-  let planCompliance: PlanComplianceGroup[] = [];
-  let riskStats: RiskStatGroup[] = [];
   let recentTrades: Trade[] = [];
   let openTrades: Trade[] = [];
 
@@ -99,14 +86,10 @@ export default async function DashboardPage() {
     summary = analytics.summary;
     instruments = analytics.instruments;
     strategies = analytics.strategies;
-    planCompliance = analytics.planCompliance;
-    riskStats = analytics.riskStats;
   } catch {
     summary = EMPTY_SUMMARY;
     instruments = [];
     strategies = [];
-    planCompliance = [];
-    riskStats = [];
   }
 
   try {
@@ -134,8 +117,6 @@ export default async function DashboardPage() {
       initialSummary={summary}
       initialInstruments={instruments}
       initialStrategies={strategies}
-      initialPlanCompliance={planCompliance}
-      initialRiskStats={riskStats}
       recentTrades={recentTrades}
       openTrades={openTrades}
     />

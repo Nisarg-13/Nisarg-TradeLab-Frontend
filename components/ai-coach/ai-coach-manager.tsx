@@ -23,6 +23,7 @@ import {
   listAiChatHistory,
 } from "@/lib/api/ai";
 import { useClientAuthToken } from "@/lib/auth/client";
+import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type { AiAnalysis, AiChatMessage, SampleConfidence } from "@/types/ai";
@@ -76,8 +77,9 @@ export function AiCoachManager({
   initialChatHistory: AiChatMessage[];
 }) {
   const getAuthToken = useClientAuthToken();
+  const { accountId: selectedAccountId, setAccountId: setSelectedAccountId } =
+    usePersistedAccountId(accounts);
   const [tab, setTab] = useState<CoachTab>("analysis");
-  const [selectedAccountId, setSelectedAccountId] = useState("");
   const [analyses, setAnalyses] = useState(initialAnalyses);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState(
     initialAnalyses[0]?.id ?? "",

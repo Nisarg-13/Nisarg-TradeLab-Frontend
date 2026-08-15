@@ -19,7 +19,12 @@ type DropdownSelectProps = {
   onValueChange?: (value: string) => void;
   required?: boolean;
   className?: string;
+  menuPlacement?: "top" | "bottom" | "auto";
 };
+
+function estimateMenuHeight(optionCount: number) {
+  return Math.min(optionCount * 36 + 8, 240);
+}
 
 export function DropdownSelect({
   name,
@@ -30,8 +35,12 @@ export function DropdownSelect({
   onValueChange,
   required,
   className,
+  menuPlacement = "auto",
 }: DropdownSelectProps) {
   const [open, setOpen] = useState(false);
+  const [resolvedPlacement, setResolvedPlacement] = useState<"top" | "bottom">(
+    "bottom",
+  );
   const [uncontrolledValue, setUncontrolledValue] = useState(
     defaultValue ?? options[0]?.value ?? "",
   );
@@ -64,6 +73,44 @@ export function DropdownSelect({
     onValueChange?.(nextValue);
   }
 
+  function resolvePlacement() {
+    if (menuPlacement === "top") {
+      return "top" as const;
+    }
+
+    if (menuPlacement === "bottom") {
+      return "bottom" as const;
+    }
+
+    const rect = containerRef.current?.getBoundingClientRect();
+
+    if (!rect) {
+      return "bottom" as const;
+    }
+
+    const menuHeight = estimateMenuHeight(options.length);
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+
+    if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+      return "top" as const;
+    }
+
+    return "bottom" as const;
+  }
+
+  function toggleOpen() {
+    setOpen((current) => {
+      const nextOpen = !current;
+
+      if (nextOpen) {
+        setResolvedPlacement(resolvePlacement());
+      }
+
+      return nextOpen;
+    });
+  }
+
   return (
     <div ref={containerRef} className={cn("relative", className)}>
       <input
@@ -77,7 +124,7 @@ export function DropdownSelect({
         id={id}
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        onClick={toggleOpen}
         className="border-input bg-background hover:bg-muted/50 flex h-9 w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors"
       >
         <span>{selected?.label ?? "Select..."}</span>
@@ -91,7 +138,12 @@ export function DropdownSelect({
       {open ? (
         <ul
           role="listbox"
-          className="bg-popover text-popover-foreground absolute top-[calc(100%+0.25rem)] z-[100] max-h-60 w-full overflow-auto rounded-lg border p-1 shadow-none"
+          className={cn(
+            "bg-popover text-popover-foreground absolute z-[200] max-h-60 w-full overflow-auto rounded-lg border p-1 shadow-md",
+            resolvedPlacement === "top"
+              ? "bottom-[calc(100%+0.25rem)]"
+              : "top-[calc(100%+0.25rem)]",
+          )}
         >
           {options.length === 0 ? (
             <li className="text-muted-foreground px-2 py-2 text-sm">

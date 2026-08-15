@@ -7,15 +7,13 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-cards";
+import { DailyPerformanceCalendar } from "@/components/dashboard/daily-performance-calendar";
 import { EquityCurveChart } from "@/components/dashboard/equity-curve-chart";
-import { PlanComplianceCard } from "@/components/dashboard/plan-compliance-card";
 import {
   InstrumentPerformanceTable,
   StrategyPerformanceTable,
 } from "@/components/dashboard/performance-tables";
 import { RecentTradesCard } from "@/components/dashboard/recent-trades-card";
-import { RiskStatsTable } from "@/components/dashboard/risk-stats-table";
-import { TradingCalendar } from "@/components/dashboard/trading-calendar";
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
 import { mapTradeToLivePosition } from "@/lib/live-trades/map";
 import { Button } from "@/components/ui/button";
@@ -24,18 +22,18 @@ import { Label } from "@/components/ui/label";
 import {
   getAnalyticsSummary,
   getInstrumentPerformance,
-  getPlanCompliance,
-  getRiskStats,
   getStrategyPerformance,
 } from "@/lib/api/analytics";
 import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
+import {
+  useInitialPersistedAccountLoad,
+  usePersistedAccountId,
+} from "@/lib/hooks/use-persisted-account-id";
 import type { TradingAccount } from "@/types/account";
 import type {
   AnalyticsSummary,
   InstrumentPerformance,
-  PlanComplianceGroup,
-  RiskStatGroup,
   StrategyPerformance,
 } from "@/types/analytics";
 import type { Trade } from "@/types/trade";
@@ -45,8 +43,6 @@ export function DashboardManager({
   initialSummary,
   initialInstruments,
   initialStrategies,
-  initialPlanCompliance,
-  initialRiskStats,
   recentTrades,
   openTrades,
 }: {
@@ -54,8 +50,6 @@ export function DashboardManager({
   initialSummary: AnalyticsSummary;
   initialInstruments: InstrumentPerformance[];
   initialStrategies: StrategyPerformance[];
-  initialPlanCompliance: PlanComplianceGroup[];
-  initialRiskStats: RiskStatGroup[];
   recentTrades: Trade[];
   openTrades: Trade[];
 }) {
@@ -67,12 +61,10 @@ export function DashboardManager({
     user?.firstName ??
     user?.primaryEmailAddress?.emailAddress ??
     null;
-  const [accountId, setAccountId] = useState("");
+  const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
   const [summary, setSummary] = useState(initialSummary);
   const [instruments, setInstruments] = useState(initialInstruments);
   const [strategies, setStrategies] = useState(initialStrategies);
-  const [planCompliance, setPlanCompliance] = useState(initialPlanCompliance);
-  const [riskStats, setRiskStats] = useState(initialRiskStats);
   const [positions, setPositions] = useState(openTrades);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -93,15 +85,11 @@ export function DashboardManager({
         summaryResponse,
         instrumentsResponse,
         strategiesResponse,
-        planComplianceResponse,
-        riskStatsResponse,
         openTradesResponse,
       ] = await Promise.all([
         getAnalyticsSummary(getAuthToken, query),
         getInstrumentPerformance(getAuthToken, query),
         getStrategyPerformance(getAuthToken, query),
-        getPlanCompliance(getAuthToken, query),
-        getRiskStats(getAuthToken, query),
         listTrades(getAuthToken, {
           status: "OPEN",
           limit: 5,
@@ -113,8 +101,6 @@ export function DashboardManager({
       setSummary(summaryResponse.data);
       setInstruments(instrumentsResponse.data);
       setStrategies(strategiesResponse.data);
-      setPlanCompliance(planComplianceResponse.data);
-      setRiskStats(riskStatsResponse.data);
       setPositions(openTradesResponse.data);
       router.refresh();
     } catch (err) {
@@ -125,6 +111,12 @@ export function DashboardManager({
       setIsLoading(false);
     }
   }
+
+  useInitialPersistedAccountLoad(
+    isReady,
+    () => handleApplyFilter(),
+    Boolean(accountId),
+  );
 
   return (
     <div className="space-y-6">
@@ -168,12 +160,15 @@ export function DashboardManager({
         description="Open journal positions with MT5 live pricing when sync is active."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+      <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
         <EquityCurveChart data={summary.equityCurve} />
-        <RecentTradesCard trades={recentTrades} />
+        <DailyPerformanceCalendar
+          days={summary.calendar}
+          currency={summary.currency}
+        />
       </div>
 
-      <TradingCalendar days={summary.calendar} currency={summary.currency} />
+      <RecentTradesCard trades={recentTrades} />
 
       <div className="grid gap-6 xl:grid-cols-2">
         <InstrumentPerformanceTable
@@ -184,14 +179,6 @@ export function DashboardManager({
           rows={strategies}
           currency={summary.currency}
         />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <PlanComplianceCard
-          groups={planCompliance}
-          currency={summary.currency}
-        />
-        <RiskStatsTable groups={riskStats} currency={summary.currency} />
       </div>
     </div>
   );

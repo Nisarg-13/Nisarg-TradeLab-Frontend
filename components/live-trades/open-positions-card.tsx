@@ -14,6 +14,7 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/layout/empty-state";
 import { formatMoney } from "@/lib/formatting/currency";
+import { formatTradePrice } from "@/lib/formatting/trade-price";
 import { cn } from "@/lib/utils";
 import type { LiveDataStatus, LiveTradePosition } from "@/types/live-trades";
 
@@ -111,19 +112,19 @@ export function OpenPositionsCard({
                     </div>
                   </td>
                   <td className="tabular-data py-3">
-                    {position.averageEntryPrice}
+                    {formatTradePrice(position.averageEntryPrice)}
                   </td>
                   <td className="tabular-data py-3">
                     {position.liveStatus === "STALE" ||
                     position.liveStatus === "DISCONNECTED"
                       ? "—"
-                      : (position.currentPrice ?? "—")}
+                      : formatTradePrice(position.currentPrice)}
                   </td>
                   <td className="tabular-data py-3">
-                    {position.currentStopLoss ?? "—"}
+                    {formatTradePrice(position.currentStopLoss)}
                   </td>
                   <td className="tabular-data py-3">
-                    {position.currentTakeProfit ?? "—"}
+                    {formatTradePrice(position.currentTakeProfit)}
                   </td>
                   <td className="tabular-data py-3">
                     {position.currentVolume}

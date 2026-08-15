@@ -56,6 +56,7 @@ export function AnalyticsFilters({
   strategies,
   mistakes,
   filters,
+  accountId = "",
   isLoading,
   onChange,
   onApply,
@@ -64,6 +65,7 @@ export function AnalyticsFilters({
   strategies: Strategy[];
   mistakes: Mistake[];
   filters: AnalyticsQuery;
+  accountId?: string;
   isLoading: boolean;
   onChange: (next: AnalyticsQuery) => void;
   onApply: () => void;
@@ -123,7 +125,7 @@ export function AnalyticsFilters({
             id="analytics-account"
             name="analytics-account"
             options={accountOptions}
-            value={filters.tradingAccountId ?? ""}
+            value={filters.tradingAccountId ?? accountId ?? ""}
             onValueChange={(value) => updateField("tradingAccountId", value)}
           />
         </div>

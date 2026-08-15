@@ -8,6 +8,7 @@ import { MetricsGroupsTable } from "@/components/analytics/metrics-groups-table"
 import { PeriodComparisonPanel } from "@/components/analytics/period-comparison-panel";
 import { TimeHeatmap } from "@/components/analytics/time-heatmap";
 import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-cards";
+import { DailyPerformanceCalendar } from "@/components/dashboard/daily-performance-calendar";
 import { EquityCurveChart } from "@/components/dashboard/equity-curve-chart";
 import {
   InstrumentPerformanceTable,
@@ -15,7 +16,6 @@ import {
 } from "@/components/dashboard/performance-tables";
 import { PlanComplianceCard } from "@/components/dashboard/plan-compliance-card";
 import { RiskStatsTable } from "@/components/dashboard/risk-stats-table";
-import { TradingCalendar } from "@/components/dashboard/trading-calendar";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   Card,
@@ -39,6 +39,10 @@ import {
   getTimeAnalytics,
 } from "@/lib/api/analytics";
 import { useClientAuthToken } from "@/lib/auth/client";
+import {
+  useInitialPersistedAccountLoad,
+  usePersistedAccountId,
+} from "@/lib/hooks/use-persisted-account-id";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type {
@@ -109,6 +113,7 @@ export function AnalyticsManager({
   initialComparison: PeriodComparison;
 }) {
   const getAuthToken = useClientAuthToken();
+  const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
   const [activeTab, setActiveTab] = useState<AnalyticsTab>("overview");
   const [filters, setFilters] = useState<AnalyticsQuery>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -140,6 +145,31 @@ export function AnalyticsManager({
 
   const currency = summary.currency;
 
+  const queryFilters = useMemo<AnalyticsQuery>(
+    () => ({
+      ...filters,
+      tradingAccountId: (filters.tradingAccountId ?? accountId) || undefined,
+    }),
+    [accountId, filters],
+  );
+
+  function handleFiltersChange(next: AnalyticsQuery) {
+    setFilters(next);
+
+    const nextAccountId = next.tradingAccountId ?? "";
+    const currentAccountId = filters.tradingAccountId ?? accountId ?? "";
+
+    if (nextAccountId !== currentAccountId) {
+      setAccountId(nextAccountId);
+    }
+  }
+
+  useInitialPersistedAccountLoad(
+    isReady,
+    () => loadAnalytics(),
+    Boolean(accountId),
+  );
+
   const mistakeRows = useMemo(
     () =>
       mistakeAnalytics.map((row) => ({
@@ -158,7 +188,7 @@ export function AnalyticsManager({
     [mistakeAnalytics],
   );
 
-  async function loadAnalytics(query: AnalyticsQuery = filters) {
+  async function loadAnalytics(query: AnalyticsQuery = queryFilters) {
     setIsLoading(true);
 
     try {
@@ -220,7 +250,11 @@ export function AnalyticsManager({
     setHeatmapMetric(metric);
 
     try {
-      const response = await getHeatmapAnalytics(getAuthToken, filters, metric);
+      const response = await getHeatmapAnalytics(
+        getAuthToken,
+        queryFilters,
+        metric,
+      );
       setHeatmapCells(response.data.cells);
     } catch (error) {
       toast.error(
@@ -242,8 +276,9 @@ export function AnalyticsManager({
         strategies={strategies}
         mistakes={mistakes}
         filters={filters}
+        accountId={accountId}
         isLoading={isLoading}
-        onChange={setFilters}
+        onChange={handleFiltersChange}
         onApply={() => void loadAnalytics()}
       />
 
@@ -268,8 +303,13 @@ export function AnalyticsManager({
       {activeTab === "overview" ? (
         <div className="space-y-6">
           <DashboardSummaryCards summary={summary} />
-          <EquityCurveChart data={summary.equityCurve} />
-          <TradingCalendar days={summary.calendar} currency={currency} />
+          <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
+            <EquityCurveChart data={summary.equityCurve} />
+            <DailyPerformanceCalendar
+              days={summary.calendar}
+              currency={currency}
+            />
+          </div>
           <PlanComplianceCard groups={planCompliance} currency={currency} />
         </div>
       ) : null}

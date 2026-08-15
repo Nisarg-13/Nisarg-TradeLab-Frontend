@@ -6,14 +6,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatMoney } from "@/lib/formatting/currency";
+import { formatDateTimeWithSeconds } from "@/lib/formatting/datetime";
+import { formatTradePrice } from "@/lib/formatting/trade-price";
 import type { TradeExecution } from "@/types/trade";
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 function formatCharge(value: string, currency: string) {
   const amount = Number(value);
@@ -63,7 +58,9 @@ export function TradeExecutionsTable({
               {executions.map((execution) => (
                 <tr key={execution.id} className="border-b last:border-0">
                   <td className="py-3">{execution.type}</td>
-                  <td className="py-3 tabular-nums">{execution.price}</td>
+                  <td className="py-3 tabular-nums">
+                    {formatTradePrice(execution.price)}
+                  </td>
                   <td className="py-3 tabular-nums">{execution.volume}</td>
                   <td className="py-3 tabular-nums">{execution.profit}</td>
                   <td className="py-3 tabular-nums">
@@ -75,7 +72,9 @@ export function TradeExecutionsTable({
                   <td className="py-3 tabular-nums">
                     {formatCharge(execution.fee, currency)}
                   </td>
-                  <td className="py-3">{formatDate(execution.executedAt)}</td>
+                  <td className="py-3">
+                    {formatDateTimeWithSeconds(execution.executedAt)}
+                  </td>
                 </tr>
               ))}
             </tbody>

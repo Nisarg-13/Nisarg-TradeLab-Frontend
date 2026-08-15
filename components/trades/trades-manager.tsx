@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { TradeStatusBadge } from "@/components/trades/trade-status-badge";
+import { TradesTable } from "@/components/trades/trades-table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -19,8 +19,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
-import { formatMoney } from "@/lib/formatting/currency";
-import { pnlTextClass } from "@/lib/formatting/pnl-tone";
+import {
+  useInitialPersistedAccountLoad,
+  usePersistedAccountId,
+} from "@/lib/hooks/use-persisted-account-id";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type { Trade, TradeStatus } from "@/types/trade";
@@ -39,19 +41,14 @@ const DIRECTION_OPTIONS = [
   { value: "SHORT", label: "Short" },
 ];
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
 const SORT_OPTIONS = [
   { value: "openedAt_desc", label: "Newest first" },
   { value: "openedAt_asc", label: "Oldest first" },
   { value: "netPnl_desc", label: "Highest PnL" },
   { value: "netPnl_asc", label: "Lowest PnL" },
 ];
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 export function TradesManager({
   initialTrades,
@@ -68,11 +65,11 @@ export function TradesManager({
   accounts: TradingAccount[];
 }) {
   const getAuthToken = useClientAuthToken();
+  const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
   const [trades, setTrades] = useState(initialTrades);
   const [meta, setMeta] = useState(initialMeta);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [accountId, setAccountId] = useState("");
   const [symbol, setSymbol] = useState("");
   const [status, setStatus] = useState<TradeStatus | "">("");
   const [direction, setDirection] = useState<TradeDirection | "">("");
@@ -80,6 +77,7 @@ export function TradesManager({
     "openedAt_desc" | "openedAt_asc" | "netPnl_desc" | "netPnl_asc"
   >("openedAt_desc");
   const [page, setPage] = useState(initialMeta.page);
+  const [pageSize, setPageSize] = useState(initialMeta.limit || 10);
 
   const accountOptions = [
     { value: "", label: "All accounts" },
@@ -90,13 +88,13 @@ export function TradesManager({
   ];
 
   const loadTrades = useCallback(
-    async (nextPage = page) => {
+    async (nextPage = page, nextLimit = pageSize) => {
       setIsLoading(true);
 
       try {
         const response = await listTrades(getAuthToken, {
           page: nextPage,
-          limit: meta.limit,
+          limit: nextLimit,
           sort,
           ...(accountId ? { tradingAccountId: accountId } : {}),
           ...(symbol ? { symbol: symbol.toUpperCase() } : {}),
@@ -107,6 +105,7 @@ export function TradesManager({
         setTrades(response.data);
         setMeta(response.meta);
         setPage(response.meta.page);
+        setPageSize(response.meta.limit);
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Failed to load trades.",
@@ -115,16 +114,13 @@ export function TradesManager({
         setIsLoading(false);
       }
     },
-    [
-      accountId,
-      direction,
-      getAuthToken,
-      meta.limit,
-      page,
-      sort,
-      status,
-      symbol,
-    ],
+    [accountId, direction, getAuthToken, page, pageSize, sort, status, symbol],
+  );
+
+  useInitialPersistedAccountLoad(
+    isReady,
+    () => loadTrades(1),
+    Boolean(accountId),
   );
 
   return (
@@ -140,7 +136,7 @@ export function TradesManager({
       </PageHeader>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-4">
           <CardTitle>Filters</CardTitle>
           <CardDescription>Refine the trade list.</CardDescription>
         </CardHeader>
@@ -217,80 +213,86 @@ export function TradesManager({
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Trade journal</CardTitle>
-          <CardDescription>
-            {meta.total} trade{meta.total === 1 ? "" : "s"} total
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 pb-4">
+          <div>
+            <CardTitle>All trades</CardTitle>
+            <CardDescription className="mt-1">
+              {meta.total} trade{meta.total === 1 ? "" : "s"} total
+            </CardDescription>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {trades.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No trades yet. Create your first trade to start journaling.
-            </p>
+        <CardContent className="space-y-4 pt-0">
+          {isLoading ? (
+            <p className="text-muted-foreground text-sm">Loading trades...</p>
           ) : (
-            trades.map((trade) => (
-              <Link
-                key={trade.id}
-                href={`/trades/${trade.id}`}
-                className="hover:bg-card-hover block rounded-lg border p-4 transition-colors"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">
-                        {trade.symbol} · {trade.direction}
-                      </p>
-                      <TradeStatusBadge status={trade.status} />
-                    </div>
-                    <p className="text-muted-foreground text-sm">
-                      {trade.tradingAccount.name} · Opened{" "}
-                      {formatDate(trade.openedAt)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p
-                      className={cn(
-                        "tabular-data font-medium",
-                        pnlTextClass(trade.netPnl),
-                      )}
-                    >
-                      {formatMoney(trade.netPnl, trade.tradingAccount.currency)}
-                    </p>
-                    {trade.realizedR ? (
-                      <p className="text-muted-foreground text-sm tabular-nums">
-                        {Number(trade.realizedR).toFixed(2)}R
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </Link>
-            ))
+            <TradesTable
+              trades={trades}
+              showAccount={!accountId}
+              emptyMessage="No trades match these filters."
+            />
           )}
 
-          {meta.totalPages > 1 ? (
-            <div className="flex items-center justify-between pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={page <= 1 || isLoading}
-                onClick={() => void loadTrades(page - 1)}
+          <div className="flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground shrink-0 text-sm">
+                Rows per page
+              </span>
+              <div
+                className="bg-muted/40 flex rounded-lg border p-0.5"
+                role="group"
+                aria-label="Rows per page"
               >
-                Previous
-              </Button>
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <Button
+                    key={size}
+                    type="button"
+                    variant={pageSize === size ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-8 min-w-10 px-3"
+                    disabled={isLoading}
+                    aria-pressed={pageSize === size}
+                    onClick={() => {
+                      if (pageSize !== size) {
+                        void loadTrades(1, size);
+                      }
+                    }}
+                  >
+                    {size}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {meta.totalPages > 1 ? (
+              <div className="flex items-center justify-between gap-3 sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1 || isLoading}
+                  onClick={() => void loadTrades(page - 1)}
+                >
+                  Previous
+                </Button>
+                <p className="text-muted-foreground text-sm">
+                  Page {meta.page} of {meta.totalPages}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= meta.totalPages || isLoading}
+                  onClick={() => void loadTrades(page + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            ) : (
               <p className="text-muted-foreground text-sm">
                 Page {meta.page} of {meta.totalPages}
               </p>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={page >= meta.totalPages || isLoading}
-                onClick={() => void loadTrades(page + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          ) : null}
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,77 +1,27 @@
 import Link from "next/link";
 
-import { TradeStatusBadge } from "@/components/trades/trade-status-badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
-import { formatMoney } from "@/lib/formatting/currency";
-import { pnlTextClass } from "@/lib/formatting/pnl-tone";
-import { cn } from "@/lib/utils";
+import { TradesTable } from "@/components/trades/trades-table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Trade } from "@/types/trade";
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 export function RecentTradesCard({ trades }: { trades: Trade[] }) {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Recent trades</CardTitle>
-          <CardDescription>Latest journal entries.</CardDescription>
-        </div>
+      <CardHeader className="flex flex-row items-center justify-between gap-3 pb-4">
+        <CardTitle>Recent trades</CardTitle>
         <Link
           href="/trades"
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          className="text-primary text-sm font-medium hover:underline"
         >
-          View all
+          View all →
         </Link>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {trades.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No trades yet. Create one from the journal or risk calculator.
-          </p>
-        ) : (
-          trades.map((trade) => (
-            <Link
-              key={trade.id}
-              href={`/trades/${trade.id}`}
-              className="hover:bg-card-hover block rounded-lg border p-4 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium">
-                      {trade.symbol} · {trade.direction}
-                    </p>
-                    <TradeStatusBadge status={trade.status} />
-                  </div>
-                  <p className="text-muted-foreground text-sm">
-                    {formatDate(trade.openedAt)}
-                  </p>
-                </div>
-                <p
-                  className={cn(
-                    "tabular-data font-medium",
-                    pnlTextClass(trade.netPnl),
-                  )}
-                >
-                  {formatMoney(trade.netPnl, trade.tradingAccount.currency)}
-                </p>
-              </div>
-            </Link>
-          ))
-        )}
+
+      <CardContent className="pt-0">
+        <TradesTable
+          trades={trades}
+          emptyMessage="No trades yet. Create one from the journal or risk calculator."
+        />
       </CardContent>
     </Card>
   );

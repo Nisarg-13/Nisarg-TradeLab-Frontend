@@ -27,7 +27,6 @@ function PerformanceTable({
     tradeCount: number;
     netPnl: string;
     winRate: string | null;
-    averageR: string | null;
   }>;
   currency: string;
   nameHeader: string;
@@ -49,7 +48,6 @@ function PerformanceTable({
                 <th className="pb-2 font-medium">Trades</th>
                 <th className="pb-2 font-medium">Net PnL</th>
                 <th className="pb-2 font-medium">Win rate</th>
-                <th className="pb-2 font-medium">Avg R</th>
               </tr>
             </thead>
             <tbody>
@@ -67,9 +65,6 @@ function PerformanceTable({
                   </td>
                   <td className="tabular-data py-3">
                     {row.winRate ? `${Number(row.winRate).toFixed(1)}%` : "—"}
-                  </td>
-                  <td className="tabular-data py-3">
-                    {row.averageR ? `${row.averageR}R` : "—"}
                   </td>
                 </tr>
               ))}
@@ -99,7 +94,6 @@ export function InstrumentPerformanceTable({
         tradeCount: row.tradeCount,
         netPnl: row.netPnl,
         winRate: row.winRate,
-        averageR: row.averageR,
       }))}
     />
   );
@@ -123,7 +117,6 @@ export function StrategyPerformanceTable({
         tradeCount: row.tradeCount,
         netPnl: row.netPnl,
         winRate: row.winRate,
-        averageR: row.averageR,
       }))}
     />
   );

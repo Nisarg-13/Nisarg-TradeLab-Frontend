@@ -58,6 +58,8 @@ export type AnalyticsSummary = {
   longestLosingStreak: number;
   currentWinningStreak: number;
   currentLosingStreak: number;
+  startingBalance: string;
+  currentBalance: string;
   currentOpenRisk: string;
   sampleConfidence: SampleConfidence;
   equityCurve: EquityCurvePoint[];

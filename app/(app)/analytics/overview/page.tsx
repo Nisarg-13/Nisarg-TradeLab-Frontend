@@ -58,6 +58,8 @@ const EMPTY_SUMMARY: AnalyticsSummary = {
   longestLosingStreak: 0,
   currentWinningStreak: 0,
   currentLosingStreak: 0,
+  startingBalance: "0.00",
+  currentBalance: "0.00",
   currentOpenRisk: "0.00",
   sampleConfidence: "INSUFFICIENT",
   equityCurve: [],

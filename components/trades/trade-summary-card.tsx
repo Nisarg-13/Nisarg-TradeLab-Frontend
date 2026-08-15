@@ -7,6 +7,11 @@ import {
 } from "@/components/ui/card";
 import { TradeStatusBadge } from "@/components/trades/trade-status-badge";
 import { formatMoney } from "@/lib/formatting/currency";
+import {
+  formatDateTimeWithSeconds,
+  formatTradeHoldingDuration,
+} from "@/lib/formatting/datetime";
+import { formatTradePrice } from "@/lib/formatting/trade-price";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
 import type { Trade } from "@/types/trade";
@@ -47,8 +52,30 @@ export function TradeSummaryCard({ trade }: { trade: Trade }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <DetailItem label="Avg entry" value={trade.averageEntryPrice} />
-        <DetailItem label="Avg exit" value={trade.averageExitPrice ?? "—"} />
+        <DetailItem
+          label="Opened"
+          value={formatDateTimeWithSeconds(trade.openedAt)}
+        />
+        <DetailItem
+          label="Closed"
+          value={formatDateTimeWithSeconds(trade.closedAt)}
+        />
+        <DetailItem
+          label="Hold time"
+          value={formatTradeHoldingDuration(
+            trade.openedAt,
+            trade.closedAt,
+            trade.status,
+          )}
+        />
+        <DetailItem
+          label="Avg entry"
+          value={formatTradePrice(trade.averageEntryPrice)}
+        />
+        <DetailItem
+          label="Avg exit"
+          value={formatTradePrice(trade.averageExitPrice)}
+        />
         <DetailItem
           label="Volume"
           value={
@@ -57,10 +84,13 @@ export function TradeSummaryCard({ trade }: { trade: Trade }) {
               : trade.currentVolume
           }
         />
-        <DetailItem label="Stop loss" value={trade.currentStopLoss ?? "—"} />
+        <DetailItem
+          label="Stop loss"
+          value={formatTradePrice(trade.currentStopLoss)}
+        />
         <DetailItem
           label="Take profit"
-          value={trade.currentTakeProfit ?? "—"}
+          value={formatTradePrice(trade.currentTakeProfit)}
         />
         <DetailItem
           label="Initial risk"

@@ -3,6 +3,7 @@ export type UserProfile = {
   email: string;
   timezone: string;
   preferredCurrency: string;
+  selectedTradingAccountId: string | null;
   createdAt: string;
   updatedAt: string;
 };

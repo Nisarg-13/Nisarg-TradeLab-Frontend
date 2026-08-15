@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +18,10 @@ import { Label } from "@/components/ui/label";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { getLiveTrades } from "@/lib/api/live-trades";
 import { useClientAuthToken } from "@/lib/auth/client";
+import {
+  useInitialPersistedAccountLoad,
+  usePersistedAccountId,
+} from "@/lib/hooks/use-persisted-account-id";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type {
@@ -100,7 +103,7 @@ export function LiveTradesManager({
   initialData: LiveTradesResponse;
 }) {
   const getAuthToken = useClientAuthToken();
-  const [accountId, setAccountId] = useState("");
+  const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
   const [data, setData] = useState(initialData);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(
     new Date().toISOString(),
@@ -148,6 +151,12 @@ export function LiveTradesManager({
       setIsRefreshing(false);
     }
   }
+
+  useInitialPersistedAccountLoad(
+    isReady,
+    () => handleRefresh(),
+    Boolean(accountId),
+  );
 
   return (
     <div className="space-y-6">

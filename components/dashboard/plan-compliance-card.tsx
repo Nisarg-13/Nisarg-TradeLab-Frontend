@@ -41,8 +41,6 @@ export function PlanComplianceCard({
                 <th className="pb-2 font-medium">Trades</th>
                 <th className="pb-2 font-medium">Net PnL</th>
                 <th className="pb-2 font-medium">Win rate</th>
-                <th className="pb-2 font-medium">Avg R</th>
-                <th className="pb-2 font-medium">Expectancy</th>
               </tr>
             </thead>
             <tbody>
@@ -61,14 +59,6 @@ export function PlanComplianceCard({
                   <td className="tabular-data py-3">
                     {group.winRate
                       ? `${Number(group.winRate).toFixed(1)}%`
-                      : "—"}
-                  </td>
-                  <td className="py-3 tabular-nums">
-                    {group.averageR ? `${group.averageR}R` : "—"}
-                  </td>
-                  <td className="py-3 tabular-nums">
-                    {group.moneyExpectancy
-                      ? formatMoney(group.moneyExpectancy, currency)
                       : "—"}
                   </td>
                 </tr>

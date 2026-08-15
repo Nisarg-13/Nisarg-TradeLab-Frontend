@@ -33,15 +33,25 @@ export async function apiRequest<T>(
   const url = `${baseUrl ?? getBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
   const authToken = getAuthToken ? await getAuthToken() : null;
 
-  const response = await fetch(url, {
-    ...init,
-    signal,
-    headers: {
-      "Content-Type": "application/json",
-      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      ...headers,
-    },
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      ...init,
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...headers,
+      },
+    });
+  } catch (error) {
+    throw new ApiError(
+      "Unable to reach the API. If this persists, check that the backend is running and CORS is configured for your frontend URL.",
+      0,
+      error,
+    );
+  }
 
   const contentType = response.headers.get("content-type");
   const body = contentType?.includes("application/json")

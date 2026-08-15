@@ -5,4 +5,7 @@ build
 coverage
 playwright-report
 test-results
+.agents
+package-lock.json
 README.md
+pnpm-lock.yaml

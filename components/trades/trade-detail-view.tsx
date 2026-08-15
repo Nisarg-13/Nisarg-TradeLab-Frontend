@@ -62,7 +62,10 @@ export function TradeDetailView({ initialTrade }: { initialTrade: Trade }) {
       <TradeSummaryCard trade={trade} />
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <TradeExecutionsTable executions={trade.executions} />
+        <TradeExecutionsTable
+          executions={trade.executions}
+          currency={trade.tradingAccount.currency}
+        />
         <TradeTimeline events={trade.events} />
       </div>
 

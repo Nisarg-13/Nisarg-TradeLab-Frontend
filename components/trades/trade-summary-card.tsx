@@ -49,7 +49,14 @@ export function TradeSummaryCard({ trade }: { trade: Trade }) {
       <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <DetailItem label="Avg entry" value={trade.averageEntryPrice} />
         <DetailItem label="Avg exit" value={trade.averageExitPrice ?? "—"} />
-        <DetailItem label="Volume" value={trade.currentVolume} />
+        <DetailItem
+          label="Volume"
+          value={
+            trade.status === "CLOSED"
+              ? trade.initialVolume
+              : trade.currentVolume
+          }
+        />
         <DetailItem label="Stop loss" value={trade.currentStopLoss ?? "—"} />
         <DetailItem
           label="Take profit"
@@ -67,6 +74,17 @@ export function TradeSummaryCard({ trade }: { trade: Trade }) {
           label="Planned R:R"
           value={trade.plannedRR ? Number(trade.plannedRR).toFixed(2) : "—"}
         />
+        <DetailItem
+          label="Gross PnL"
+          value={formatMoney(trade.grossPnl, currency)}
+          valueClassName={pnlTextClass(trade.grossPnl)}
+        />
+        <DetailItem
+          label="Commission"
+          value={formatMoney(trade.commission, currency)}
+        />
+        <DetailItem label="Swap" value={formatMoney(trade.swap, currency)} />
+        <DetailItem label="Fees" value={formatMoney(trade.fees, currency)} />
         <DetailItem
           label="Net PnL"
           value={formatMoney(trade.netPnl, currency)}

@@ -8,18 +8,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatMoney } from "@/lib/formatting/currency";
+import { pnlSurfaceClass } from "@/lib/formatting/pnl-tone";
 import type { CalendarDay } from "@/types/analytics";
 
 function dayTone(pnl: number) {
-  if (pnl > 0) {
-    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
-  }
-
-  if (pnl < 0) {
-    return "border-destructive/30 bg-destructive/10 text-destructive";
-  }
-
-  return "border-border bg-muted/40 text-muted-foreground";
+  return pnlSurfaceClass(pnl);
 }
 
 export function TradingCalendar({
@@ -50,11 +43,13 @@ export function TradingCalendar({
               <Link
                 key={day.date}
                 href={`/trades?openedFrom=${day.date}&openedTo=${day.date}`}
-                className={`rounded-lg border p-3 text-sm ${dayTone(Number(day.pnl))}`}
+                className={`hover:bg-card-hover rounded-lg border p-3 text-sm transition-colors ${dayTone(Number(day.pnl))}`}
               >
                 <p className="font-medium">{day.date}</p>
-                <p className="tabular-nums">{formatMoney(day.pnl, currency)}</p>
-                <p className="text-xs tabular-nums">
+                <p className="tabular-data font-medium">
+                  {formatMoney(day.pnl, currency)}
+                </p>
+                <p className="tabular-data text-xs">
                   {Number(day.r).toFixed(2)}R
                 </p>
                 <p className="text-xs">

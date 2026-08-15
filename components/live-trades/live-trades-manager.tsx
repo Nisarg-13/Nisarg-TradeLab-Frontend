@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,7 +50,7 @@ function ConnectionBanner({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+        <p className="text-success text-sm font-medium">
           MANUAL · Journal positions are current
         </p>
       </CardContent>
@@ -123,13 +124,14 @@ export function LiveTradesManager({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Live trades</h1>
-          <p className="text-muted-foreground text-sm">
-            Monitor open positions, stop loss, take profit, and sync status.
-          </p>
+        <div className="space-y-2">
+          <PageHeader
+            eyebrow="Monitor"
+            title="Live trades"
+            description="Monitor open positions, stop loss, take profit, and sync status."
+          />
           {lastRefreshedAt ? (
-            <p className="text-muted-foreground mt-1 text-xs">
+            <p className="text-muted-foreground text-xs">
               Last refreshed{" "}
               {new Intl.DateTimeFormat("en-US", {
                 dateStyle: "medium",

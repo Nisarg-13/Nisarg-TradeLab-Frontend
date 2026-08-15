@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/layout/page-header";
 import {
   TradeForm,
   type TradeFormPrefill,
@@ -68,13 +69,11 @@ export default async function NewTradePage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">New trade</h1>
-        <p className="text-muted-foreground text-sm">
-          Record a manual trade with optional risk snapshot and psychology
-          notes.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Journal"
+        title="New trade"
+        description="Record a manual trade with optional risk snapshot and psychology notes."
+      />
       <TradeForm
         mode="create"
         accounts={accounts}

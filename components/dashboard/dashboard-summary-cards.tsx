@@ -6,22 +6,32 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatMoney } from "@/lib/formatting/currency";
+import { pnlTextClass } from "@/lib/formatting/pnl-tone";
+import { cn } from "@/lib/utils";
 import type { AnalyticsSummary } from "@/types/analytics";
 
 function SummaryCard({
   label,
   value,
   hint,
+  valueClassName,
 }: {
   label: string;
   value: string;
   hint?: string;
+  valueClassName?: string;
 }) {
   return (
-    <Card>
+    <Card className="hover:bg-card-hover transition-colors">
       <CardHeader className="pb-2">
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-2xl tabular-nums">{value}</CardTitle>
+        <CardDescription className="text-xs tracking-wide uppercase">
+          {label}
+        </CardDescription>
+        <CardTitle
+          className={cn("tabular-data text-2xl font-semibold", valueClassName)}
+        >
+          {value}
+        </CardTitle>
       </CardHeader>
       {hint ? (
         <CardContent>
@@ -49,6 +59,7 @@ export function DashboardSummaryCards({
         label="Net PnL"
         value={formatMoney(summary.netPnl, currency)}
         hint={`${summary.closedTradeCount} closed trades`}
+        valueClassName={pnlTextClass(summary.netPnl)}
       />
       <SummaryCard
         label="Return %"

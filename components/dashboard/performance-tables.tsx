@@ -6,6 +6,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatMoney } from "@/lib/formatting/currency";
+import { pnlTextClass } from "@/lib/formatting/pnl-tone";
+import { cn } from "@/lib/utils";
 import type {
   InstrumentPerformance,
   StrategyPerformance,
@@ -54,14 +56,19 @@ function PerformanceTable({
               {rows.map((row) => (
                 <tr key={row.name} className="border-b last:border-0">
                   <td className="py-3 font-medium">{row.name}</td>
-                  <td className="py-3 tabular-nums">{row.tradeCount}</td>
-                  <td className="py-3 tabular-nums">
+                  <td className="tabular-data py-3">{row.tradeCount}</td>
+                  <td
+                    className={cn(
+                      "tabular-data py-3",
+                      pnlTextClass(row.netPnl),
+                    )}
+                  >
                     {formatMoney(row.netPnl, currency)}
                   </td>
-                  <td className="py-3 tabular-nums">
+                  <td className="tabular-data py-3">
                     {row.winRate ? `${Number(row.winRate).toFixed(1)}%` : "—"}
                   </td>
-                  <td className="py-3 tabular-nums">
+                  <td className="tabular-data py-3">
                     {row.averageR ? `${row.averageR}R` : "—"}
                   </td>
                 </tr>

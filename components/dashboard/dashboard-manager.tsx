@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-cards";
 import { EquityCurveChart } from "@/components/dashboard/equity-curve-chart";
 import { PlanComplianceCard } from "@/components/dashboard/plan-compliance-card";
@@ -122,15 +123,13 @@ export function DashboardManager({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-muted-foreground text-sm">Dashboard</p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {welcomeEmail ? `Welcome back, ${welcomeEmail}` : "Welcome back"}
-          </h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl text-sm">
-            Performance overview powered by backend analytics.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="Dashboard"
+          title={
+            welcomeEmail ? `Welcome back, ${welcomeEmail}` : "Welcome back"
+          }
+          description="Performance overview powered by backend analytics."
+        />
         <div className="flex w-full max-w-md flex-col gap-2 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-2">
             <Label htmlFor="dashboard-account">Account</Label>

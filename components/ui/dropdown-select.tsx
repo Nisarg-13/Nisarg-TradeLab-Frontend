@@ -91,7 +91,7 @@ export function DropdownSelect({
       {open ? (
         <ul
           role="listbox"
-          className="bg-popover text-popover-foreground absolute top-[calc(100%+0.25rem)] z-[100] max-h-60 w-full overflow-auto rounded-lg border p-1 shadow-md"
+          className="bg-popover text-popover-foreground absolute top-[calc(100%+0.25rem)] z-[100] max-h-60 w-full overflow-auto rounded-lg border p-1 shadow-none"
         >
           {options.length === 0 ? (
             <li className="text-muted-foreground px-2 py-2 text-sm">

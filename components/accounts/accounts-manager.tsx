@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -164,16 +165,11 @@ export function AccountsManager({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-muted-foreground text-sm">Accounts</p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Trading Accounts
-          </h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl text-sm">
-            Create accounts and track balances for your trading journal.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Accounts"
+        title="Trading Accounts"
+        description="Create accounts and track balances for your trading journal."
+      >
         <Button
           onClick={() => {
             setShowCreate((value) => !value);
@@ -184,7 +180,7 @@ export function AccountsManager({
         >
           {showCreate ? "Cancel" : "New Account"}
         </Button>
-      </div>
+      </PageHeader>
 
       {showCreate ? (
         <Card>

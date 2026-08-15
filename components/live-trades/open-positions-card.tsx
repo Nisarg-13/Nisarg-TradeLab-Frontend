@@ -22,7 +22,7 @@ function formatDate(value: string) {
 
 function getSyncStatus(trade: Trade) {
   if (trade.source === "MT5") {
-    return { label: "MT5", tone: "text-emerald-600 dark:text-emerald-400" };
+    return { label: "MT5", tone: "text-success" };
   }
 
   return { label: "MANUAL", tone: "text-muted-foreground" };
@@ -92,17 +92,17 @@ export function OpenPositionsCard({
                         <TradeStatusBadge status={trade.status} />
                       </div>
                     </td>
-                    <td className="py-3 tabular-nums">
+                    <td className="tabular-data py-3">
                       {trade.averageEntryPrice}
                     </td>
-                    <td className="py-3 tabular-nums">
+                    <td className="tabular-data py-3">
                       {trade.currentStopLoss ?? "—"}
                     </td>
-                    <td className="py-3 tabular-nums">
+                    <td className="tabular-data py-3">
                       {trade.currentTakeProfit ?? "—"}
                     </td>
-                    <td className="py-3 tabular-nums">{trade.currentVolume}</td>
-                    <td className="py-3 tabular-nums">
+                    <td className="tabular-data py-3">{trade.currentVolume}</td>
+                    <td className="tabular-data py-3">
                       {trade.initialRiskAmount
                         ? formatMoney(
                             trade.initialRiskAmount,

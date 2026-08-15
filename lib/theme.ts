@@ -5,7 +5,7 @@ export type Theme = "light" | "dark";
 
 export function getPreferredTheme(): Theme {
   if (typeof window === "undefined") {
-    return "light";
+    return "dark";
   }
 
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
@@ -14,9 +14,7 @@ export function getPreferredTheme(): Theme {
     return stored;
   }
 
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  return "dark";
 }
 
 export function getThemeSnapshot(): Theme {
@@ -28,7 +26,7 @@ export function getThemeSnapshot(): Theme {
 }
 
 export function getServerThemeSnapshot(): Theme {
-  return "light";
+  return "dark";
 }
 
 export function subscribeToTheme(onStoreChange: () => void) {
@@ -60,4 +58,4 @@ export function setTheme(theme: Theme) {
   window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
 }
 
-export const themeInitScript = `(function(){try{var t=localStorage.getItem("${THEME_STORAGE_KEY}");var d=t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d);}catch(e){}})();`;
+export const themeInitScript = `(function(){try{var t=localStorage.getItem("${THEME_STORAGE_KEY}");var d=t!=="light";document.documentElement.classList.toggle("dark",d);}catch(e){}})();`;

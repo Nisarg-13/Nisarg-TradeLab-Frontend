@@ -12,15 +12,19 @@ export function AppHeader() {
     <header className="bg-card flex h-[4.5rem] shrink-0 items-center justify-between gap-4 border-b px-4 md:px-6">
       <MobileNav />
       <div className="hidden flex-col gap-0.5 leading-tight md:flex">
-        <span className="text-lg font-semibold">Trading Journal</span>
-        <span className="text-muted-foreground text-sm">
+        <span className="text-base font-semibold tracking-tight">
+          Trading Journal
+        </span>
+        <span className="text-muted-foreground text-xs tracking-wide uppercase">
           Plan, journal, review, and improve
         </span>
       </div>
       <div className="flex items-center gap-3 md:gap-4">
         <HeaderClock />
         <ThemeToggle />
-        <UserButton />
+        <div className="md:hidden">
+          <UserButton />
+        </div>
       </div>
     </header>
   );

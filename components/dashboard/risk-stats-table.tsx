@@ -6,6 +6,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatMoney } from "@/lib/formatting/currency";
+import { pnlTextClass } from "@/lib/formatting/pnl-tone";
+import { cn } from "@/lib/utils";
 import type { RiskStatGroup } from "@/types/analytics";
 
 export function RiskStatsTable({
@@ -46,11 +48,16 @@ export function RiskStatsTable({
               {populated.map((group) => (
                 <tr key={group.label} className="border-b last:border-0">
                   <td className="py-3 font-medium">{group.label}</td>
-                  <td className="py-3 tabular-nums">{group.tradeCount}</td>
-                  <td className="py-3 tabular-nums">
+                  <td className="tabular-data py-3">{group.tradeCount}</td>
+                  <td
+                    className={cn(
+                      "tabular-data py-3",
+                      pnlTextClass(group.netPnl),
+                    )}
+                  >
                     {formatMoney(group.netPnl, currency)}
                   </td>
-                  <td className="py-3 tabular-nums">
+                  <td className="tabular-data py-3">
                     {group.winRate
                       ? `${Number(group.winRate).toFixed(1)}%`
                       : "—"}

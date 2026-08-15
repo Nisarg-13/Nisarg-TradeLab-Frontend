@@ -3,20 +3,13 @@ import type { TradeStatus } from "@/types/trade";
 
 const STATUS_VARIANTS: Record<
   TradeStatus,
-  "default" | "secondary" | "outline"
+  "default" | "secondary" | "profit" | "loss"
 > = {
-  OPEN: "default",
+  OPEN: "profit",
   CLOSED: "secondary",
-  CANCELLED: "outline",
+  CANCELLED: "loss",
 };
 
 export function TradeStatusBadge({ status }: { status: TradeStatus }) {
-  return (
-    <Badge
-      variant={STATUS_VARIANTS[status]}
-      className={status === "CANCELLED" ? "text-destructive" : undefined}
-    >
-      {status}
-    </Badge>
-  );
+  return <Badge variant={STATUS_VARIANTS[status]}>{status}</Badge>;
 }

@@ -7,13 +7,25 @@ import {
 } from "@/components/ui/card";
 import { TradeStatusBadge } from "@/components/trades/trade-status-badge";
 import { formatMoney } from "@/lib/formatting/currency";
+import { pnlTextClass } from "@/lib/formatting/pnl-tone";
+import { cn } from "@/lib/utils";
 import type { Trade } from "@/types/trade";
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function DetailItem({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
   return (
     <div className="space-y-1">
-      <p className="text-muted-foreground text-sm">{label}</p>
-      <p className="font-medium tabular-nums">{value}</p>
+      <p className="text-muted-foreground text-xs tracking-wide uppercase">
+        {label}
+      </p>
+      <p className={cn("tabular-data font-medium", valueClassName)}>{value}</p>
     </div>
   );
 }
@@ -58,6 +70,7 @@ export function TradeSummaryCard({ trade }: { trade: Trade }) {
         <DetailItem
           label="Net PnL"
           value={formatMoney(trade.netPnl, currency)}
+          valueClassName={pnlTextClass(trade.netPnl)}
         />
         <DetailItem
           label="Realized R"

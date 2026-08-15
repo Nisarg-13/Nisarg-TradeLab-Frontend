@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -159,12 +160,11 @@ export function StrategiesManager({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Strategies</h1>
-        <p className="text-muted-foreground text-sm">
-          Manage strategies, tags, and mistakes for your trade journal.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Journal"
+        title="Strategies"
+        description="Manage strategies, tags, and mistakes for your trade journal."
+      />
 
       <div className="grid gap-6 xl:grid-cols-3">
         <Card>

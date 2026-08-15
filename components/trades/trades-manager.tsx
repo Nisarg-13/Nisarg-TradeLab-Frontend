@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { TradeStatusBadge } from "@/components/trades/trade-status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -19,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
 import { formatMoney } from "@/lib/formatting/currency";
+import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type { Trade, TradeStatus } from "@/types/trade";
@@ -127,17 +129,15 @@ export function TradesManager({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Trades</h1>
-          <p className="text-muted-foreground text-sm">
-            Browse, filter, and review your open and closed trades.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Journal"
+        title="Trades"
+        description="Browse, filter, and review your open and closed trades."
+      >
         <Link href="/trades/new" className={cn(buttonVariants())}>
           New trade
         </Link>
-      </div>
+      </PageHeader>
 
       <Card>
         <CardHeader>
@@ -233,7 +233,7 @@ export function TradesManager({
               <Link
                 key={trade.id}
                 href={`/trades/${trade.id}`}
-                className="hover:bg-muted/50 block rounded-lg border p-4 transition-colors"
+                className="hover:bg-card-hover block rounded-lg border p-4 transition-colors"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-1">
@@ -250,11 +250,10 @@ export function TradesManager({
                   </div>
                   <div className="text-right">
                     <p
-                      className={`font-medium tabular-nums ${
-                        Number(trade.netPnl) >= 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-destructive"
-                      }`}
+                      className={cn(
+                        "tabular-data font-medium",
+                        pnlTextClass(trade.netPnl),
+                      )}
                     >
                       {formatMoney(trade.netPnl, trade.tradingAccount.currency)}
                     </p>

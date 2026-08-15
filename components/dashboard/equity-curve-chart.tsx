@@ -94,7 +94,7 @@ export function EquityCurveChart({ data }: { data: EquityCurvePoint[] }) {
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke="var(--chart-1)"
+                stroke="var(--primary)"
                 strokeWidth={2}
                 dot={false}
               />

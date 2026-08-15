@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { AddExecutionDialog } from "@/components/trades/add-execution-dialog";
 import { CloseTradeDialog } from "@/components/trades/close-trade-dialog";
 import { TradeExecutionsTable } from "@/components/trades/trade-executions-table";
@@ -31,15 +32,11 @@ export function TradeDetailView({ initialTrade }: { initialTrade: Trade }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Trade detail
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Review executions, timeline, and psychology for this trade.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Journal"
+        title="Trade detail"
+        description="Review executions, timeline, and psychology for this trade."
+      >
         <div className="flex flex-wrap gap-2">
           <Link
             href="/trades"
@@ -60,7 +57,7 @@ export function TradeDetailView({ initialTrade }: { initialTrade: Trade }) {
             Edit
           </Link>
         </div>
-      </div>
+      </PageHeader>
 
       <TradeSummaryCard trade={trade} />
 

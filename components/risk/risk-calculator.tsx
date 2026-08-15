@@ -49,7 +49,7 @@ function ResultItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-1">
       <p className="text-muted-foreground text-sm">{label}</p>
-      <p className="font-medium tabular-nums">{value}</p>
+      <p className="tabular-data font-medium">{value}</p>
     </div>
   );
 }
@@ -59,7 +59,7 @@ function violationStyles(severity: "warning" | "critical") {
     return "border-destructive/40 bg-destructive/10 text-destructive";
   }
 
-  return "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400";
+  return "border-primary/40 bg-primary/10 text-primary";
 }
 
 export function RiskCalculator() {

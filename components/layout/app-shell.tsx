@@ -3,11 +3,13 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-background flex min-h-screen">
+    <div className="bg-background flex h-dvh overflow-hidden">
       <AppSidebar />
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <AppHeader />
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

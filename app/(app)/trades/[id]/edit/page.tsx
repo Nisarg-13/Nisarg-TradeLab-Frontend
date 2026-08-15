@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { TradeForm } from "@/components/trades/trade-form";
 import { listAccounts } from "@/lib/api/accounts";
 import { listMistakes, listStrategies, listTags } from "@/lib/api/strategies";
@@ -48,12 +49,11 @@ export default async function EditTradePage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Edit trade</h1>
-        <p className="text-muted-foreground text-sm">
-          Update stop loss, take profit, strategy, and psychology fields.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Journal"
+        title="Edit trade"
+        description="Update stop loss, take profit, strategy, and psychology fields."
+      />
       <TradeForm
         mode="edit"
         accounts={accounts}

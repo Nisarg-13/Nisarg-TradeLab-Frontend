@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { formatMoney } from "@/lib/formatting/currency";
+import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
 import type { Trade } from "@/types/trade";
 
@@ -45,7 +46,7 @@ export function RecentTradesCard({ trades }: { trades: Trade[] }) {
             <Link
               key={trade.id}
               href={`/trades/${trade.id}`}
-              className="hover:bg-muted/50 block rounded-lg border p-4 transition-colors"
+              className="hover:bg-card-hover block rounded-lg border p-4 transition-colors"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -60,11 +61,10 @@ export function RecentTradesCard({ trades }: { trades: Trade[] }) {
                   </p>
                 </div>
                 <p
-                  className={`font-medium tabular-nums ${
-                    Number(trade.netPnl) >= 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-destructive"
-                  }`}
+                  className={cn(
+                    "tabular-data font-medium",
+                    pnlTextClass(trade.netPnl),
+                  )}
                 >
                   {formatMoney(trade.netPnl, trade.tradingAccount.currency)}
                 </p>

@@ -21,5 +21,13 @@ export const APP_NAV_ITEMS = [
   { href: "/daily-journal", label: "Daily Journal", icon: LineChart },
   { href: "/ai-coach", label: "AI Coach", icon: Bot },
   { href: "/accounts", label: "Accounts", icon: Wallet },
-  { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
+
+export const APP_SETTINGS_NAV_ITEM = {
+  href: "/settings",
+  label: "Settings",
+  icon: Settings,
+} as const;
+
+export type AppNavItem =
+  (typeof APP_NAV_ITEMS)[number] | typeof APP_SETTINGS_NAV_ITEM;

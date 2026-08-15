@@ -16,7 +16,8 @@ export function AppToaster() {
       duration={5000}
       toastOptions={{
         classNames: {
-          toast: "group toast border-border bg-card text-foreground shadow-lg",
+          toast:
+            "group toast border-border bg-card text-foreground shadow-none",
           title: "text-sm font-medium",
           description: "text-muted-foreground text-sm",
         },

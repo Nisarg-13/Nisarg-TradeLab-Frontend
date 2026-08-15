@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 
 import { TradeStatusBadge } from "@/components/trades/trade-status-badge";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -9,9 +12,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/layout/empty-state";
 import { formatMoney } from "@/lib/formatting/currency";
 import { cn } from "@/lib/utils";
-import type { Trade } from "@/types/trade";
+import type { LiveDataStatus, LiveTradePosition } from "@/types/live-trades";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -20,21 +24,35 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function getSyncStatus(trade: Trade) {
-  if (trade.source === "MT5") {
-    return { label: "MT5", tone: "text-success" };
+function liveStatusTone(status: LiveDataStatus) {
+  switch (status) {
+    case "LIVE":
+      return "border-profit/30 bg-profit/10 text-profit";
+    case "STALE":
+      return "border-amber-400/30 bg-amber-400/10 text-amber-300";
+    default:
+      return "border-loss/30 bg-loss/10 text-loss";
   }
+}
 
-  return { label: "MANUAL", tone: "text-muted-foreground" };
+function formatSignedMoney(value: string | null, currency: string) {
+  if (value === null) return "—";
+
+  const amount = Number(value);
+  const formatted = formatMoney(String(Math.abs(amount)), currency);
+
+  if (amount > 0) return `+${formatted}`;
+  if (amount < 0) return `-${formatted}`;
+  return formatted;
 }
 
 export function OpenPositionsCard({
-  trades,
+  positions,
   title = "Open positions",
-  description = "Currently open trades from your journal.",
+  description = "Currently open trades from your journal and MT5 sync.",
   showViewAll = false,
 }: {
-  trades: Trade[];
+  positions: LiveTradePosition[];
   title?: string;
   description?: string;
   showViewAll?: boolean;
@@ -56,67 +74,93 @@ export function OpenPositionsCard({
         ) : null}
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        {trades.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No open positions. Create a trade or wait for MT5 sync in a later
-            phase.
-          </p>
+        {positions.length === 0 ? (
+          <EmptyState
+            title="No open positions"
+            description="Open a manual trade or connect MT5 to see live broker positions here."
+          />
         ) : (
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full min-w-[920px] text-sm">
             <thead>
               <tr className="text-muted-foreground border-b text-left">
                 <th className="pb-2 font-medium">Instrument</th>
                 <th className="pb-2 font-medium">Entry</th>
+                <th className="pb-2 font-medium">Current</th>
                 <th className="pb-2 font-medium">SL</th>
                 <th className="pb-2 font-medium">TP</th>
                 <th className="pb-2 font-medium">Volume</th>
-                <th className="pb-2 font-medium">Risk</th>
+                <th className="pb-2 font-medium">Floating PnL</th>
+                <th className="pb-2 font-medium">Current R</th>
                 <th className="pb-2 font-medium">Opened</th>
                 <th className="pb-2 font-medium">Sync</th>
               </tr>
             </thead>
             <tbody>
-              {trades.map((trade) => {
-                const sync = getSyncStatus(trade);
-
-                return (
-                  <tr key={trade.id} className="border-b last:border-0">
-                    <td className="py-3">
-                      <Link
-                        href={`/trades/${trade.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {trade.symbol} · {trade.direction}
-                      </Link>
-                      <div className="mt-1">
-                        <TradeStatusBadge status={trade.status} />
-                      </div>
-                    </td>
-                    <td className="tabular-data py-3">
-                      {trade.averageEntryPrice}
-                    </td>
-                    <td className="tabular-data py-3">
-                      {trade.currentStopLoss ?? "—"}
-                    </td>
-                    <td className="tabular-data py-3">
-                      {trade.currentTakeProfit ?? "—"}
-                    </td>
-                    <td className="tabular-data py-3">{trade.currentVolume}</td>
-                    <td className="tabular-data py-3">
-                      {trade.initialRiskAmount
-                        ? formatMoney(
-                            trade.initialRiskAmount,
-                            trade.tradingAccount.currency,
-                          )
-                        : "—"}
-                    </td>
-                    <td className="py-3">{formatDate(trade.openedAt)}</td>
-                    <td className={`py-3 font-medium ${sync.tone}`}>
-                      {sync.label}
-                    </td>
-                  </tr>
-                );
-              })}
+              {positions.map((position) => (
+                <tr key={position.id} className="border-b last:border-0">
+                  <td className="py-3">
+                    <Link
+                      href={`/trades/${position.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {position.symbol} · {position.direction}
+                    </Link>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <TradeStatusBadge status={position.status} />
+                      <Badge variant="outline">{position.source}</Badge>
+                    </div>
+                  </td>
+                  <td className="tabular-data py-3">
+                    {position.averageEntryPrice}
+                  </td>
+                  <td className="tabular-data py-3">
+                    {position.liveStatus === "STALE" ||
+                    position.liveStatus === "DISCONNECTED"
+                      ? "—"
+                      : (position.currentPrice ?? "—")}
+                  </td>
+                  <td className="tabular-data py-3">
+                    {position.currentStopLoss ?? "—"}
+                  </td>
+                  <td className="tabular-data py-3">
+                    {position.currentTakeProfit ?? "—"}
+                  </td>
+                  <td className="tabular-data py-3">
+                    {position.currentVolume}
+                  </td>
+                  <td
+                    className={cn(
+                      "tabular-data py-3 font-medium",
+                      position.floatingPnl && Number(position.floatingPnl) >= 0
+                        ? "text-profit"
+                        : "text-loss",
+                    )}
+                  >
+                    {position.liveStatus === "LIVE"
+                      ? formatSignedMoney(
+                          position.floatingPnl,
+                          position.tradingAccount.currency,
+                        )
+                      : "—"}
+                  </td>
+                  <td className="tabular-data py-3">
+                    {position.liveStatus === "LIVE"
+                      ? (position.currentR ?? "—")
+                      : "—"}
+                  </td>
+                  <td className="py-3">{formatDate(position.openedAt)}</td>
+                  <td className="py-3">
+                    <Badge className={liveStatusTone(position.liveStatus)}>
+                      {position.liveStatus}
+                    </Badge>
+                    {position.lastSyncedAt ? (
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {formatDate(position.lastSyncedAt)}
+                      </p>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}

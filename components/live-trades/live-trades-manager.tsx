@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/layout/page-header";
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
+import { PageHeader } from "@/components/layout/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,43 +16,77 @@ import {
 } from "@/components/ui/card";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Label } from "@/components/ui/label";
-import { listTrades } from "@/lib/api/trades";
+import { TableSkeleton } from "@/components/ui/skeleton";
+import { getLiveTrades } from "@/lib/api/live-trades";
 import { useClientAuthToken } from "@/lib/auth/client";
+import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
-import type { Trade } from "@/types/trade";
+import type {
+  LiveDataStatus,
+  LiveTradeConnection,
+  LiveTradePosition,
+  LiveTradesResponse,
+} from "@/types/live-trades";
 
-function ConnectionBanner({
-  accountSource,
-}: {
-  accountSource: "MANUAL" | "MT5" | "MIXED";
-}) {
-  if (accountSource === "MT5") {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Connection status</CardTitle>
-          <CardDescription>
-            MT5 live sync will populate LIVE / STALE / DISCONNECTED states in a
-            later phase.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
+function liveStatusTone(status: LiveDataStatus) {
+  switch (status) {
+    case "LIVE":
+      return "border-profit/30 bg-profit/10 text-profit";
+    case "STALE":
+      return "border-amber-400/30 bg-amber-400/10 text-amber-300";
+    default:
+      return "border-loss/30 bg-loss/10 text-loss";
   }
+}
 
+function ConnectionStatusCard({
+  liveStatus,
+  connections,
+}: {
+  liveStatus: LiveDataStatus;
+  connections: LiveTradeConnection[];
+}) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Connection status</CardTitle>
-        <CardDescription>
-          Showing open manual journal trades. MT5-synchronized live positions
-          arrive in Phase 8–9.
-        </CardDescription>
+      <CardHeader className="gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <CardTitle>Connection status</CardTitle>
+          <CardDescription>
+            Backend determines whether MT5 data is live, stale, or disconnected.
+          </CardDescription>
+        </div>
+        <Badge className={liveStatusTone(liveStatus)}>{liveStatus}</Badge>
       </CardHeader>
-      <CardContent>
-        <p className="text-success text-sm font-medium">
-          MANUAL · Journal positions are current
-        </p>
+      <CardContent className="grid gap-3 md:grid-cols-2">
+        {connections.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            No MT5 connections yet. Generate a connection key from Accounts.
+          </p>
+        ) : (
+          connections.map((connection) => (
+            <div
+              key={connection.connectionId}
+              className="rounded-lg border px-4 py-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium">{connection.tradingAccountName}</p>
+                <Badge className={liveStatusTone(connection.liveStatus)}>
+                  {connection.liveStatus}
+                </Badge>
+              </div>
+              <p className="text-muted-foreground mt-2 text-sm">
+                {connection.mt5Login ?? "Not paired"} ·{" "}
+                {connection.serverName ?? "No server"}
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Last heartbeat:{" "}
+                {connection.lastHeartbeatAt
+                  ? new Date(connection.lastHeartbeatAt).toLocaleString()
+                  : "Never"}
+              </p>
+            </div>
+          ))
+        )}
       </CardContent>
     </Card>
   );
@@ -60,61 +94,55 @@ function ConnectionBanner({
 
 export function LiveTradesManager({
   accounts,
-  initialOpenTrades,
+  initialData,
 }: {
   accounts: TradingAccount[];
-  initialOpenTrades: Trade[];
+  initialData: LiveTradesResponse;
 }) {
-  const router = useRouter();
   const getAuthToken = useClientAuthToken();
   const [accountId, setAccountId] = useState("");
-  const [openTrades, setOpenTrades] = useState(initialOpenTrades);
+  const [data, setData] = useState(initialData);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(
     new Date().toISOString(),
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const accountOptions = [
-    { value: "", label: "All accounts" },
-    ...accounts.map((account) => ({
-      value: account.id,
-      label: account.name,
-    })),
-  ];
+  const accountOptions = useMemo(
+    () => [
+      { value: "", label: "All accounts" },
+      ...accounts.map((account) => ({
+        value: account.id,
+        label: account.name,
+      })),
+    ],
+    [accounts],
+  );
 
-  const accountSource: "MANUAL" | "MT5" | "MIXED" = (() => {
-    const tradeSources = new Set(openTrades.map((trade) => trade.source));
-
-    if (tradeSources.size === 0) {
-      return accounts.some((account) => account.source === "MT5")
-        ? "MT5"
-        : "MANUAL";
-    }
-
-    if (tradeSources.size > 1) {
-      return "MIXED";
-    }
-
-    return tradeSources.has("MT5") ? "MT5" : "MANUAL";
-  })();
+  const filteredPositions: LiveTradePosition[] = useMemo(
+    () =>
+      accountId
+        ? data.positions.filter(
+            (position) => position.tradingAccountId === accountId,
+          )
+        : data.positions,
+    [accountId, data.positions],
+  );
 
   async function handleRefresh() {
     setIsRefreshing(true);
 
     try {
-      const response = await listTrades(getAuthToken, {
-        status: "OPEN",
-        limit: 50,
-        sort: "openedAt_desc",
-        ...(accountId ? { tradingAccountId: accountId } : {}),
+      const response = await getLiveTrades(getAuthToken, {
+        tradingAccountId: accountId || undefined,
       });
 
-      setOpenTrades(response.data);
+      setData(response.data);
       setLastRefreshedAt(new Date().toISOString());
-      router.refresh();
-    } catch (err) {
+    } catch (error) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to refresh open trades.",
+        error instanceof Error
+          ? error.message
+          : "Failed to refresh live trades.",
       );
     } finally {
       setIsRefreshing(false);
@@ -128,7 +156,7 @@ export function LiveTradesManager({
           <PageHeader
             eyebrow="Monitor"
             title="Live trades"
-            description="Monitor open positions, stop loss, take profit, and sync status."
+            description="Monitor open positions, floating PnL, and MT5 sync status."
           />
           {lastRefreshedAt ? (
             <p className="text-muted-foreground text-xs">
@@ -161,13 +189,26 @@ export function LiveTradesManager({
         </div>
       </div>
 
-      <ConnectionBanner accountSource={accountSource} />
-
-      <OpenPositionsCard
-        trades={openTrades}
-        title="Open positions"
-        description="Floating PnL and live MT5 prices will appear once broker sync is enabled."
+      <ConnectionStatusCard
+        liveStatus={data.liveStatus}
+        connections={data.connections}
       />
+
+      {isRefreshing ? (
+        <Card>
+          <CardContent className="py-6">
+            <TableSkeleton rows={4} />
+          </CardContent>
+        </Card>
+      ) : (
+        <OpenPositionsCard positions={filteredPositions} />
+      )}
+
+      {data.liveStatus === "STALE" ? (
+        <p className={cn("text-sm", liveStatusTone("STALE"))}>
+          Some MT5 prices may be stale. Do not treat them as live market data.
+        </p>
+      ) : null}
     </div>
   );
 }

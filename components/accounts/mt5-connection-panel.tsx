@@ -19,7 +19,11 @@ import {
 } from "@/lib/api/mt5";
 import { useClientAuthToken } from "@/lib/auth/client";
 import { cn } from "@/lib/utils";
-import type { Mt5Connection, Mt5ConnectionStatus } from "@/types/mt5";
+import type {
+  LiveDataStatus,
+  Mt5Connection,
+  Mt5ConnectionStatus,
+} from "@/types/mt5";
 
 function statusTone(status: Mt5ConnectionStatus) {
   switch (status) {
@@ -29,6 +33,17 @@ function statusTone(status: Mt5ConnectionStatus) {
       return "border-loss/30 bg-loss/10 text-loss";
     default:
       return "border-muted-foreground/30 bg-muted text-muted-foreground";
+  }
+}
+
+function liveTone(status: LiveDataStatus) {
+  switch (status) {
+    case "LIVE":
+      return "border-profit/30 bg-profit/10 text-profit";
+    case "STALE":
+      return "border-amber-400/30 bg-amber-400/10 text-amber-300";
+    default:
+      return "border-loss/30 bg-loss/10 text-loss";
   }
 }
 
@@ -140,6 +155,17 @@ export function Mt5ConnectionPanel({
             <div>
               <p className="text-muted-foreground text-sm">Server</p>
               <p className="font-medium">{connection.serverName ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-sm">Live data</p>
+              <Badge
+                className={cn(
+                  "mt-1",
+                  liveTone(connection.liveDataStatus ?? "DISCONNECTED"),
+                )}
+              >
+                {connection.liveDataStatus ?? "DISCONNECTED"}
+              </Badge>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Last sync</p>

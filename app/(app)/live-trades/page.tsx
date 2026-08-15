@@ -1,13 +1,20 @@
+import { ErrorBoundary } from "@/components/layout/error-boundary";
 import { LiveTradesManager } from "@/components/live-trades/live-trades-manager";
 import { listAccounts } from "@/lib/api/accounts";
-import { listTrades } from "@/lib/api/trades";
+import { getLiveTrades } from "@/lib/api/live-trades";
 import { getServerAuthToken } from "@/lib/auth/server";
 import type { TradingAccount } from "@/types/account";
-import type { Trade } from "@/types/trade";
+import type { LiveTradesResponse } from "@/types/live-trades";
+
+const EMPTY_LIVE_TRADES: LiveTradesResponse = {
+  liveStatus: "DISCONNECTED",
+  connections: [],
+  positions: [],
+};
 
 export default async function LiveTradesPage() {
   let accounts: TradingAccount[] = [];
-  let openTrades: Trade[] = [];
+  let liveTrades: LiveTradesResponse = EMPTY_LIVE_TRADES;
 
   try {
     const accountsResponse = await listAccounts(getServerAuthToken);
@@ -17,17 +24,17 @@ export default async function LiveTradesPage() {
   }
 
   try {
-    const tradesResponse = await listTrades(getServerAuthToken, {
-      status: "OPEN",
-      limit: 50,
-      sort: "openedAt_desc",
+    const liveTradesResponse = await getLiveTrades(getServerAuthToken, {
+      tradingAccountId: accounts.length === 1 ? accounts[0].id : undefined,
     });
-    openTrades = tradesResponse.data;
+    liveTrades = liveTradesResponse.data;
   } catch {
-    openTrades = [];
+    liveTrades = EMPTY_LIVE_TRADES;
   }
 
   return (
-    <LiveTradesManager accounts={accounts} initialOpenTrades={openTrades} />
+    <ErrorBoundary fallbackTitle="Live trades failed to load">
+      <LiveTradesManager accounts={accounts} initialData={liveTrades} />
+    </ErrorBoundary>
   );
 }

@@ -17,6 +17,7 @@ import { RecentTradesCard } from "@/components/dashboard/recent-trades-card";
 import { RiskStatsTable } from "@/components/dashboard/risk-stats-table";
 import { TradingCalendar } from "@/components/dashboard/trading-calendar";
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
+import { mapTradeToLivePosition } from "@/lib/live-trades/map";
 import { Button } from "@/components/ui/button";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Label } from "@/components/ui/label";
@@ -161,10 +162,10 @@ export function DashboardManager({
       <DashboardSummaryCards summary={summary} />
 
       <OpenPositionsCard
-        trades={positions}
+        positions={positions.map(mapTradeToLivePosition)}
         showViewAll
         title="Live positions"
-        description="Open journal positions. MT5 live sync arrives in a later phase."
+        description="Open journal positions with MT5 live pricing when sync is active."
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">

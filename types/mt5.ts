@@ -1,5 +1,7 @@
 export type Mt5ConnectionStatus = "CONNECTED" | "DISCONNECTED" | "ERROR";
 
+export type LiveDataStatus = "LIVE" | "STALE" | "DISCONNECTED";
+
 export type Mt5Connection = {
   id: string;
   tradingAccountId: string;
@@ -15,6 +17,8 @@ export type Mt5Connection = {
   status: Mt5ConnectionStatus;
   lastHeartbeatAt: string | null;
   lastSyncedAt: string | null;
+  lastPositionSnapshotAt?: string | null;
+  liveDataStatus?: "LIVE" | "STALE" | "DISCONNECTED";
   eaVersion: string | null;
   createdAt: string;
   updatedAt: string;

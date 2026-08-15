@@ -8,7 +8,6 @@ import {
   getStrategyPerformance,
 } from "@/lib/api/analytics";
 import { listTrades } from "@/lib/api/trades";
-import { getCurrentUser } from "@/lib/api/users";
 import { getServerAuthToken } from "@/lib/auth/server";
 import type { TradingAccount } from "@/types/account";
 import type {
@@ -77,7 +76,6 @@ async function loadAnalytics(accountId?: string) {
 }
 
 export default async function DashboardPage() {
-  let welcomeEmail: string | null = null;
   let accounts: TradingAccount[] = [];
   let summary: AnalyticsSummary = EMPTY_SUMMARY;
   let instruments: InstrumentPerformance[] = [];
@@ -86,13 +84,6 @@ export default async function DashboardPage() {
   let riskStats: RiskStatGroup[] = [];
   let recentTrades: Trade[] = [];
   let openTrades: Trade[] = [];
-
-  try {
-    const userResponse = await getCurrentUser(getServerAuthToken);
-    welcomeEmail = userResponse.data.email;
-  } catch {
-    welcomeEmail = null;
-  }
 
   try {
     const accountsResponse = await listAccounts(getServerAuthToken);
@@ -139,7 +130,6 @@ export default async function DashboardPage() {
 
   return (
     <DashboardManager
-      welcomeEmail={welcomeEmail}
       accounts={accounts}
       initialSummary={summary}
       initialInstruments={instruments}

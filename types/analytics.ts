@@ -5,7 +5,20 @@ export type AnalyticsQuery = {
   tradingAccountId?: string;
   closedFrom?: string;
   closedTo?: string;
+  symbol?: string;
+  strategyId?: string;
+  direction?: "LONG" | "SHORT";
+  mistakeId?: string;
+  preTradeEmotion?: string;
+  postTradeEmotion?: string;
+  followedPlan?: "true" | "false";
+  result?: "WIN" | "LOSS" | "BREAKEVEN";
 };
+
+export type HeatmapMetric = "pnl" | "averageR" | "winRate" | "tradeCount";
+
+export type PeriodComparisonMode =
+  "LATEST_20_VS_PREVIOUS_20" | "THIS_MONTH_VS_LAST_MONTH" | "CUSTOM";
 
 export type EquityCurvePoint = {
   date: string;
@@ -97,6 +110,108 @@ export type RiskStatGroup = {
   rExpectancy: string | null;
   profitFactor: string | null;
   sampleConfidence: SampleConfidence;
+};
+
+export type TradeMetricsGroup = {
+  key: string;
+  label: string;
+  tradeCount: number;
+  netPnl: string;
+  totalR: string;
+  winRate: string | null;
+  averageR: string | null;
+  moneyExpectancy: string | null;
+  rExpectancy: string | null;
+  profitFactor: string | null;
+  sampleConfidence: SampleConfidence;
+};
+
+export type TimeAnalytics = {
+  hours: TradeMetricsGroup[];
+  daysOfWeek: TradeMetricsGroup[];
+  months: TradeMetricsGroup[];
+  sessions: TradeMetricsGroup[];
+};
+
+export type HeatmapCell = {
+  dayOfWeek: number;
+  hour: number;
+  tradeCount: number;
+  netPnl: string;
+  averageR: string | null;
+  winRate: string | null;
+  value: string;
+};
+
+export type HeatmapData = {
+  metric: HeatmapMetric;
+  cells: HeatmapCell[];
+};
+
+export type PsychologyAnalytics = {
+  preTradeEmotions: TradeMetricsGroup[];
+  postTradeEmotions: TradeMetricsGroup[];
+};
+
+export type MistakeAnalyticsGroup = {
+  mistakeId: string;
+  mistakeName: string;
+  tradeCount: number;
+  netPnl: string;
+  totalR: string;
+  averageR: string | null;
+  winRate: string | null;
+  moneyExpectancy: string | null;
+  rExpectancy: string | null;
+  profitFactor: string | null;
+  sampleConfidence: SampleConfidence;
+};
+
+export type RollingPerformance = {
+  windowSize: number;
+  currentWindow: TradeMetricsGroup;
+  previousWindow: TradeMetricsGroup;
+  points: Array<{
+    index: number;
+    closedAt: string;
+    netPnl: string;
+    windowTradeCount: number;
+    windowWinRate: string | null;
+    windowAverageR: string | null;
+    windowNetPnl: string;
+  }>;
+};
+
+export type PeriodMetrics = {
+  label: string;
+  tradeCount: number;
+  netPnl: string;
+  winRate: string | null;
+  averageR: string | null;
+  moneyExpectancy: string | null;
+  profitFactor: string | null;
+  maxDrawdownAmount: string;
+  maxDrawdownPercentage: string;
+  mistakeRate: string | null;
+  planComplianceRate: string | null;
+  sampleConfidence: SampleConfidence;
+};
+
+export type PeriodComparison = {
+  mode: PeriodComparisonMode;
+  periodA: PeriodMetrics;
+  periodB: PeriodMetrics;
+  deltas: {
+    netPnl: string | null;
+    winRate: string | null;
+    averageR: string | null;
+    moneyExpectancy: string | null;
+    profitFactor: string | null;
+    mistakeRate: string | null;
+    planComplianceRate: string | null;
+    maxDrawdownAmount: string | null;
+    maxDrawdownPercentage: string | null;
+  };
 };
 
 export type ApiDataResponse<T> = {

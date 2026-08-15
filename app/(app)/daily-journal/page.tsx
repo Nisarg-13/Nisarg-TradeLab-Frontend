@@ -1,10 +1,29 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { DailyJournalManager } from "@/components/daily-journal/daily-journal-manager";
+import { listAccounts } from "@/lib/api/accounts";
+import { listDailyJournalEntries } from "@/lib/api/journal";
+import { getServerAuthToken } from "@/lib/auth/server";
+import type { TradingAccount } from "@/types/account";
+import type { DailyJournal } from "@/types/journal";
 
-export default function Page() {
-  return (
-    <PlaceholderPage
-      title="Daily Journal"
-      description="Capture daily notes, mindset, and session reviews."
-    />
-  );
+export default async function DailyJournalPage() {
+  let accounts: TradingAccount[] = [];
+  let entries: DailyJournal[] = [];
+
+  try {
+    const accountsResponse = await listAccounts(getServerAuthToken);
+    accounts = accountsResponse.data;
+  } catch {
+    accounts = [];
+  }
+
+  try {
+    const entriesResponse = await listDailyJournalEntries(getServerAuthToken, {
+      tradingAccountId: accounts[0]?.id,
+    });
+    entries = entriesResponse.data;
+  } catch {
+    entries = [];
+  }
+
+  return <DailyJournalManager accounts={accounts} initialEntries={entries} />;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -39,7 +40,6 @@ import type {
 import type { Trade } from "@/types/trade";
 
 export function DashboardManager({
-  welcomeEmail,
   accounts,
   initialSummary,
   initialInstruments,
@@ -49,7 +49,6 @@ export function DashboardManager({
   recentTrades,
   openTrades,
 }: {
-  welcomeEmail: string | null;
   accounts: TradingAccount[];
   initialSummary: AnalyticsSummary;
   initialInstruments: InstrumentPerformance[];
@@ -60,7 +59,13 @@ export function DashboardManager({
   openTrades: Trade[];
 }) {
   const router = useRouter();
+  const { user, isLoaded } = useUser();
   const getAuthToken = useClientAuthToken();
+  const displayName =
+    user?.fullName ??
+    user?.firstName ??
+    user?.primaryEmailAddress?.emailAddress ??
+    null;
   const [accountId, setAccountId] = useState("");
   const [summary, setSummary] = useState(initialSummary);
   const [instruments, setInstruments] = useState(initialInstruments);
@@ -126,7 +131,9 @@ export function DashboardManager({
         <PageHeader
           eyebrow="Dashboard"
           title={
-            welcomeEmail ? `Welcome back, ${welcomeEmail}` : "Welcome back"
+            isLoaded && displayName
+              ? `Welcome back, ${displayName}`
+              : "Welcome back"
           }
           description="Performance overview powered by backend analytics."
         />

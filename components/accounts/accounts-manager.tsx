@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { Mt5ConnectionPanel } from "@/components/accounts/mt5-connection-panel";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import {
 import { useClientAuthToken } from "@/lib/auth/client";
 import { formatMoney } from "@/lib/formatting/currency";
 import type { AccountType, TradingAccount } from "@/types/account";
+import type { Mt5Connection } from "@/types/mt5";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "INR", "AUD", "CAD", "JPY", "CHF"];
 
@@ -55,8 +57,10 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 export function AccountsManager({
   initialAccounts,
+  initialMt5Connections = [],
 }: {
   initialAccounts: TradingAccount[];
+  initialMt5Connections?: Mt5Connection[];
 }) {
   const router = useRouter();
   const getAuthToken = useClientAuthToken();
@@ -71,6 +75,10 @@ export function AccountsManager({
 
   const selected =
     accounts.find((account) => account.id === selectedId) ?? null;
+  const selectedMt5Connection =
+    initialMt5Connections.find(
+      (connection) => connection.tradingAccountId === selected?.id,
+    ) ?? null;
 
   function selectAccount(accountId: string | null) {
     setSelectedId(accountId);
@@ -280,154 +288,169 @@ export function AccountsManager({
           </Card>
 
           {selected ? (
-            <Card>
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div>
-                  <CardTitle>Account Details</CardTitle>
-                  <CardDescription>
-                    View account details and balance.
-                  </CardDescription>
-                </div>
-                {!isEditingAccount ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsEditingAccount(true)}
-                  >
-                    Edit
-                  </Button>
-                ) : null}
-              </CardHeader>
-              <CardContent>
-                {isEditingAccount ? (
-                  <form
-                    action={handleUpdate}
-                    className="grid gap-4 md:grid-cols-2"
-                  >
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-name">Account name</Label>
-                      <Input
-                        id="edit-name"
-                        name="name"
-                        defaultValue={selected.name}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-type">Account type</Label>
-                      <DropdownSelect
-                        key={`edit-type-${selected.id}`}
-                        id="edit-type"
-                        name="type"
-                        defaultValue={
-                          selected.type === "PERSONAL" ||
-                          selected.type === "PROP_CHALLENGE"
-                            ? selected.type
-                            : "PERSONAL"
-                        }
-                        options={ACCOUNT_TYPES}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-broker">Broker name</Label>
-                      <Input
-                        id="edit-broker"
-                        name="brokerName"
-                        defaultValue={selected.brokerName ?? ""}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-currency">Currency</Label>
-                      <DropdownSelect
-                        key={`edit-currency-${selected.id}`}
-                        id="edit-currency"
-                        name="currency"
-                        defaultValue={selected.currency}
-                        options={CURRENCY_OPTIONS}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-starting-balance">
-                        Starting balance
-                      </Label>
-                      <Input
-                        id="edit-starting-balance"
-                        value={selected.startingBalance}
-                        disabled
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-current-balance">
-                        Current balance
-                      </Label>
-                      <Input
-                        id="edit-current-balance"
-                        name="currentBalance"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        defaultValue={selected.currentBalance}
-                        required
-                      />
-                    </div>
-                    <div className="flex flex-wrap gap-3 md:col-span-2">
-                      <Button type="submit" disabled={isSaving}>
-                        {isSaving ? "Saving..." : "Save changes"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={isSaving}
-                        onClick={() => setIsEditingAccount(false)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                ) : (
-                  <>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <DetailItem label="Account name" value={selected.name} />
-                      <DetailItem
-                        label="Account type"
-                        value={getAccountTypeLabel(selected.type)}
-                      />
-                      <DetailItem
-                        label="Broker name"
-                        value={selected.brokerName || "—"}
-                      />
-                      <DetailItem label="Currency" value={selected.currency} />
-                      <DetailItem
-                        label="Starting balance"
-                        value={formatMoney(
-                          selected.startingBalance,
-                          selected.currency,
-                        )}
-                      />
-                      <DetailItem
-                        label="Current balance"
-                        value={formatMoney(
-                          selected.currentBalance,
-                          selected.currency,
-                        )}
-                      />
-                    </div>
-                    <div className="mt-6">
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        disabled={isSaving}
-                        onClick={() => setShowDeleteConfirm(true)}
-                      >
-                        Delete account
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                  <div>
+                    <CardTitle>Account Details</CardTitle>
+                    <CardDescription>
+                      View account details and balance.
+                    </CardDescription>
+                  </div>
+                  {!isEditingAccount ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsEditingAccount(true)}
+                    >
+                      Edit
+                    </Button>
+                  ) : null}
+                </CardHeader>
+                <CardContent>
+                  {isEditingAccount ? (
+                    <form
+                      action={handleUpdate}
+                      className="grid gap-4 md:grid-cols-2"
+                    >
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-name">Account name</Label>
+                        <Input
+                          id="edit-name"
+                          name="name"
+                          defaultValue={selected.name}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-type">Account type</Label>
+                        <DropdownSelect
+                          key={`edit-type-${selected.id}`}
+                          id="edit-type"
+                          name="type"
+                          defaultValue={
+                            selected.type === "PERSONAL" ||
+                            selected.type === "PROP_CHALLENGE"
+                              ? selected.type
+                              : "PERSONAL"
+                          }
+                          options={ACCOUNT_TYPES}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-broker">Broker name</Label>
+                        <Input
+                          id="edit-broker"
+                          name="brokerName"
+                          defaultValue={selected.brokerName ?? ""}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-currency">Currency</Label>
+                        <DropdownSelect
+                          key={`edit-currency-${selected.id}`}
+                          id="edit-currency"
+                          name="currency"
+                          defaultValue={selected.currency}
+                          options={CURRENCY_OPTIONS}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-starting-balance">
+                          Starting balance
+                        </Label>
+                        <Input
+                          id="edit-starting-balance"
+                          value={selected.startingBalance}
+                          disabled
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-current-balance">
+                          Current balance
+                        </Label>
+                        <Input
+                          id="edit-current-balance"
+                          name="currentBalance"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          defaultValue={selected.currentBalance}
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-3 md:col-span-2">
+                        <Button type="submit" disabled={isSaving}>
+                          {isSaving ? "Saving..." : "Save changes"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={isSaving}
+                          onClick={() => setIsEditingAccount(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <DetailItem
+                          label="Account name"
+                          value={selected.name}
+                        />
+                        <DetailItem
+                          label="Account type"
+                          value={getAccountTypeLabel(selected.type)}
+                        />
+                        <DetailItem
+                          label="Broker name"
+                          value={selected.brokerName || "—"}
+                        />
+                        <DetailItem
+                          label="Currency"
+                          value={selected.currency}
+                        />
+                        <DetailItem
+                          label="Starting balance"
+                          value={formatMoney(
+                            selected.startingBalance,
+                            selected.currency,
+                          )}
+                        />
+                        <DetailItem
+                          label="Current balance"
+                          value={formatMoney(
+                            selected.currentBalance,
+                            selected.currency,
+                          )}
+                        />
+                      </div>
+                      <div className="mt-6">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          disabled={isSaving}
+                          onClick={() => setShowDeleteConfirm(true)}
+                        >
+                          Delete account
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Mt5ConnectionPanel
+                key={selected.id}
+                tradingAccountId={selected.id}
+                accountName={selected.name}
+                initialConnection={selectedMt5Connection}
+              />
+            </div>
           ) : null}
         </div>
       ) : null}

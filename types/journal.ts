@@ -4,17 +4,12 @@ export type DailyJournal = {
   id: string;
   tradingAccountId: string;
   date: string;
-  sleepQuality: number | null;
-  focus: number | null;
-  mood: number | null;
+  confidenceScore: number | null;
   marketBias: MarketBias | null;
-  plannedMaxTrades: number | null;
-  plannedMaxRisk: string | null;
-  preMarketNotes: string | null;
-  postMarketReview: string | null;
+  preTradePlan: string | null;
+  postTradePlan: string | null;
   whatWentWell: string | null;
   whatWentWrong: string | null;
-  tomorrowImprovement: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -22,17 +17,12 @@ export type DailyJournal = {
 export type DailyJournalInput = {
   tradingAccountId: string;
   date: string;
-  sleepQuality?: number;
-  focus?: number;
-  mood?: number;
+  confidenceScore?: number;
   marketBias?: MarketBias;
-  plannedMaxTrades?: number;
-  plannedMaxRisk?: number;
-  preMarketNotes?: string;
-  postMarketReview?: string;
+  preTradePlan?: string;
+  postTradePlan?: string;
   whatWentWell?: string;
   whatWentWrong?: string;
-  tomorrowImprovement?: string;
 };
 
 export type UpdateDailyJournalInput = Partial<
@@ -47,4 +37,13 @@ export type ListDailyJournalQuery = {
 
 export type ApiDataResponse<T> = {
   data: T;
+};
+
+export type JournalFieldValues = {
+  marketBias: string;
+  confidenceScore: number;
+  preTradePlan: string;
+  postTradePlan: string;
+  whatWentWell: string;
+  whatWentWrong: string;
 };

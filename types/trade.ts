@@ -1,4 +1,5 @@
 import type { AssetClass } from "./instrument";
+import type { MarketBias } from "./journal";
 import type { TradeDirection } from "./risk";
 
 export type TradeSource = "MANUAL" | "MT5" | "CSV";
@@ -69,15 +70,35 @@ export type TradeEvent = {
 export type TradeReview = {
   id: string;
   tradeId: string;
+  marketBias: MarketBias | null;
+  preTradePlan: string | null;
+  postTradePlan: string | null;
   preTradeEmotion: TradeEmotion | null;
   postTradeEmotion: TradeEmotion | null;
   confidenceScore: number | null;
   followedPlan: boolean | null;
   entryReason: string | null;
+  whatWentWell: string | null;
+  whatWentWrong: string | null;
   notes: string | null;
   lesson: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TradeReviewInput = {
+  marketBias?: MarketBias;
+  preTradePlan?: string;
+  postTradePlan?: string;
+  preTradeEmotion?: TradeEmotion;
+  postTradeEmotion?: TradeEmotion;
+  confidenceScore?: number;
+  followedPlan?: boolean;
+  entryReason?: string;
+  whatWentWell?: string;
+  whatWentWrong?: string;
+  notes?: string;
+  lesson?: string;
 };
 
 export type Trade = {
@@ -117,16 +138,6 @@ export type Trade = {
   review: TradeReview | null;
   createdAt: string;
   updatedAt: string;
-};
-
-export type TradeReviewInput = {
-  preTradeEmotion?: TradeEmotion;
-  postTradeEmotion?: TradeEmotion;
-  confidenceScore?: number;
-  followedPlan?: boolean;
-  entryReason?: string;
-  notes?: string;
-  lesson?: string;
 };
 
 export type CreateTradeInput = {

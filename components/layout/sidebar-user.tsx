@@ -114,7 +114,7 @@ export function SidebarUser() {
           </button>
           <button
             type="button"
-            onClick={() => void signOut({ redirectUrl: "/sign-in" })}
+            onClick={() => void signOut({ redirectUrl: "/" })}
             className="text-loss hover:bg-card-hover flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors"
           >
             <LogOut className="size-4 shrink-0" />

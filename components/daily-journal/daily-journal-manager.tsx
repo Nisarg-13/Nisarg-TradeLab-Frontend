@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { JournalFields } from "@/components/journal/journal-fields";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,6 @@ import {
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RangeInput } from "@/components/ui/range-input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   createDailyJournalEntry,
   listDailyJournalEntries,
@@ -27,38 +26,35 @@ import { useClientAuthToken } from "@/lib/auth/client";
 import type { TradingAccount } from "@/types/account";
 import type {
   DailyJournal,
+  JournalFieldValues,
   MarketBias,
-  UpdateDailyJournalInput,
 } from "@/types/journal";
-
-const MARKET_BIAS_OPTIONS: { value: MarketBias; label: string }[] = [
-  { value: "BULLISH", label: "Bullish" },
-  { value: "BEARISH", label: "Bearish" },
-  { value: "NEUTRAL", label: "Neutral" },
-];
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function emptyDraft(accountId: string): UpdateDailyJournalInput & {
-  tradingAccountId: string;
-  date: string;
-} {
+function toJournalValues(entry?: DailyJournal | null): JournalFieldValues {
   return {
-    tradingAccountId: accountId,
-    date: todayIsoDate(),
-    sleepQuality: 7,
-    focus: 7,
-    mood: 7,
-    marketBias: "NEUTRAL",
-    plannedMaxTrades: undefined,
-    plannedMaxRisk: undefined,
-    preMarketNotes: "",
-    postMarketReview: "",
-    whatWentWell: "",
-    whatWentWrong: "",
-    tomorrowImprovement: "",
+    marketBias: entry?.marketBias ?? "",
+    preTradePlan: entry?.preTradePlan ?? "",
+    postTradePlan: entry?.postTradePlan ?? "",
+    confidenceScore: entry?.confidenceScore ?? 7,
+    whatWentWell: entry?.whatWentWell ?? "",
+    whatWentWrong: entry?.whatWentWrong ?? "",
+  };
+}
+
+function buildJournalPayload(values: JournalFieldValues) {
+  return {
+    marketBias: values.marketBias
+      ? (values.marketBias as MarketBias)
+      : undefined,
+    confidenceScore: values.confidenceScore,
+    preTradePlan: values.preTradePlan || undefined,
+    postTradePlan: values.postTradePlan || undefined,
+    whatWentWell: values.whatWentWell || undefined,
+    whatWentWrong: values.whatWentWrong || undefined,
   };
 }
 
@@ -88,7 +84,11 @@ export function DailyJournalManager({
   );
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [draft, setDraft] = useState(() => emptyDraft(accounts[0]?.id ?? ""));
+  const [draftAccountId, setDraftAccountId] = useState(accounts[0]?.id ?? "");
+  const [draftDate, setDraftDate] = useState(todayIsoDate());
+  const [journalValues, setJournalValues] = useState<JournalFieldValues>(() =>
+    toJournalValues(initialEntries[0]),
+  );
 
   const accountOptions = useMemo(
     () =>
@@ -110,39 +110,20 @@ export function DailyJournalManager({
   const selectedEntry =
     entries.find((entry) => entry.id === selectedEntryId) ?? null;
 
-  function updateDraftField<K extends keyof typeof draft>(
-    key: K,
-    value: (typeof draft)[K],
-  ) {
-    setDraft((current) => ({ ...current, [key]: value }));
-  }
-
   function startCreate() {
     setIsCreating(true);
     setSelectedEntryId(null);
-    setDraft(emptyDraft(selectedAccountId || accounts[0]?.id || ""));
+    setDraftAccountId(selectedAccountId || accounts[0]?.id || "");
+    setDraftDate(todayIsoDate());
+    setJournalValues(toJournalValues());
   }
 
   function startEdit(entry: DailyJournal) {
     setIsCreating(false);
     setSelectedEntryId(entry.id);
-    setDraft({
-      tradingAccountId: entry.tradingAccountId,
-      date: entry.date,
-      sleepQuality: entry.sleepQuality ?? 7,
-      focus: entry.focus ?? 7,
-      mood: entry.mood ?? 7,
-      marketBias: entry.marketBias ?? "NEUTRAL",
-      plannedMaxTrades: entry.plannedMaxTrades ?? undefined,
-      plannedMaxRisk: entry.plannedMaxRisk
-        ? Number(entry.plannedMaxRisk)
-        : undefined,
-      preMarketNotes: entry.preMarketNotes ?? "",
-      postMarketReview: entry.postMarketReview ?? "",
-      whatWentWell: entry.whatWentWell ?? "",
-      whatWentWrong: entry.whatWentWrong ?? "",
-      tomorrowImprovement: entry.tomorrowImprovement ?? "",
-    });
+    setDraftAccountId(entry.tradingAccountId);
+    setDraftDate(entry.date);
+    setJournalValues(toJournalValues(entry));
   }
 
   async function refreshEntries(accountId?: string) {
@@ -154,7 +135,7 @@ export function DailyJournalManager({
   }
 
   async function handleSave() {
-    if (!draft.tradingAccountId) {
+    if (!draftAccountId) {
       toast.error("Select a trading account.");
       return;
     }
@@ -162,21 +143,13 @@ export function DailyJournalManager({
     setIsSaving(true);
 
     try {
+      const payload = buildJournalPayload(journalValues);
+
       if (isCreating) {
         const response = await createDailyJournalEntry(getAuthToken, {
-          tradingAccountId: draft.tradingAccountId,
-          date: draft.date,
-          sleepQuality: draft.sleepQuality,
-          focus: draft.focus,
-          mood: draft.mood,
-          marketBias: draft.marketBias,
-          plannedMaxTrades: draft.plannedMaxTrades,
-          plannedMaxRisk: draft.plannedMaxRisk,
-          preMarketNotes: draft.preMarketNotes || undefined,
-          postMarketReview: draft.postMarketReview || undefined,
-          whatWentWell: draft.whatWentWell || undefined,
-          whatWentWrong: draft.whatWentWrong || undefined,
-          tomorrowImprovement: draft.tomorrowImprovement || undefined,
+          tradingAccountId: draftAccountId,
+          date: draftDate,
+          ...payload,
         });
 
         const refreshed = await refreshEntries(selectedAccountId || undefined);
@@ -190,19 +163,7 @@ export function DailyJournalManager({
         const response = await updateDailyJournalEntry(
           getAuthToken,
           selectedEntry.id,
-          {
-            sleepQuality: draft.sleepQuality,
-            focus: draft.focus,
-            mood: draft.mood,
-            marketBias: draft.marketBias,
-            plannedMaxTrades: draft.plannedMaxTrades,
-            plannedMaxRisk: draft.plannedMaxRisk,
-            preMarketNotes: draft.preMarketNotes || undefined,
-            postMarketReview: draft.postMarketReview || undefined,
-            whatWentWell: draft.whatWentWell || undefined,
-            whatWentWrong: draft.whatWentWrong || undefined,
-            tomorrowImprovement: draft.tomorrowImprovement || undefined,
-          },
+          payload,
         );
 
         setEntries((current) =>
@@ -227,7 +188,7 @@ export function DailyJournalManager({
     <div className="space-y-6">
       <PageHeader
         title="Daily Journal"
-        description="Capture mindset, session planning, and post-market reviews."
+        description="Capture your market read, plan, confidence, and review for the session."
       >
         <Button type="button" onClick={startCreate}>
           New entry
@@ -281,8 +242,7 @@ export function DailyJournalManager({
                       ) : null}
                     </div>
                     <p className="text-muted-foreground mt-1 text-sm">
-                      Sleep {entry.sleepQuality ?? "—"} · Focus{" "}
-                      {entry.focus ?? "—"} · Mood {entry.mood ?? "—"}
+                      Confidence {entry.confidenceScore ?? "—"}
                     </p>
                   </button>
                 ))
@@ -292,197 +252,62 @@ export function DailyJournalManager({
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>
-              {isCreating
-                ? "New journal entry"
-                : selectedEntry
-                  ? formatEntryTitle(selectedEntry)
-                  : "Select or create an entry"}
-            </CardTitle>
-            <CardDescription>
-              Track readiness, bias, and what you learned from the session.
-            </CardDescription>
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle>
+                {isCreating
+                  ? "New journal entry"
+                  : selectedEntry
+                    ? formatEntryTitle(selectedEntry)
+                    : "Select or create an entry"}
+              </CardTitle>
+              <CardDescription>
+                Capture your market read, plan, confidence, and review for this
+                session.
+              </CardDescription>
+            </div>
+            {isCreating || selectedEntry ? (
+              <Button
+                type="button"
+                disabled={isSaving}
+                onClick={() => void handleSave()}
+              >
+                {isSaving ? "Saving..." : "Save journal"}
+              </Button>
+            ) : null}
           </CardHeader>
           <CardContent className="space-y-6">
             {isCreating || selectedEntry ? (
               <>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {isCreating ? (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="journal-account">Trading account</Label>
-                        <DropdownSelect
-                          id="journal-account"
-                          name="journal-account"
-                          value={draft.tradingAccountId}
-                          onValueChange={(value) =>
-                            updateDraftField("tradingAccountId", value)
-                          }
-                          options={accountOptions}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="journal-date">Date</Label>
-                        <Input
-                          id="journal-date"
-                          type="date"
-                          value={draft.date}
-                          onChange={(event) =>
-                            updateDraftField("date", event.target.value)
-                          }
-                        />
-                      </div>
-                    </>
-                  ) : null}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="journal-bias">Market bias</Label>
-                    <DropdownSelect
-                      id="journal-bias"
-                      name="journal-bias"
-                      value={draft.marketBias ?? "NEUTRAL"}
-                      onValueChange={(value) =>
-                        updateDraftField("marketBias", value as MarketBias)
-                      }
-                      options={MARKET_BIAS_OPTIONS}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="journal-max-trades">
-                      Planned max trades
-                    </Label>
-                    <Input
-                      id="journal-max-trades"
-                      type="number"
-                      min="1"
-                      value={draft.plannedMaxTrades ?? ""}
-                      onChange={(event) =>
-                        updateDraftField(
-                          "plannedMaxTrades",
-                          event.target.value
-                            ? Number(event.target.value)
-                            : undefined,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="journal-max-risk">
-                      Planned max risk (%)
-                    </Label>
-                    <Input
-                      id="journal-max-risk"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={draft.plannedMaxRisk ?? ""}
-                      onChange={(event) =>
-                        updateDraftField(
-                          "plannedMaxRisk",
-                          event.target.value
-                            ? Number(event.target.value)
-                            : undefined,
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <RangeInput
-                    id="journal-sleep"
-                    label="Sleep quality"
-                    value={draft.sleepQuality ?? 7}
-                    onChange={(value) =>
-                      updateDraftField("sleepQuality", value)
-                    }
-                  />
-                  <RangeInput
-                    id="journal-focus"
-                    label="Focus"
-                    value={draft.focus ?? 7}
-                    onChange={(value) => updateDraftField("focus", value)}
-                  />
-                  <RangeInput
-                    id="journal-mood"
-                    label="Mood"
-                    value={draft.mood ?? 7}
-                    onChange={(value) => updateDraftField("mood", value)}
-                  />
-                </div>
-
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="journal-pre-market">Pre-market notes</Label>
-                    <Textarea
-                      id="journal-pre-market"
-                      rows={4}
-                      value={draft.preMarketNotes ?? ""}
-                      onChange={(event) =>
-                        updateDraftField("preMarketNotes", event.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="journal-post-market">
-                      Post-market review
-                    </Label>
-                    <Textarea
-                      id="journal-post-market"
-                      rows={4}
-                      value={draft.postMarketReview ?? ""}
-                      onChange={(event) =>
-                        updateDraftField("postMarketReview", event.target.value)
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-3">
+                {isCreating ? (
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="journal-well">What went well</Label>
-                      <Textarea
-                        id="journal-well"
-                        rows={4}
-                        value={draft.whatWentWell ?? ""}
-                        onChange={(event) =>
-                          updateDraftField("whatWentWell", event.target.value)
-                        }
+                      <Label htmlFor="journal-account">Trading account</Label>
+                      <DropdownSelect
+                        id="journal-account"
+                        name="journal-account"
+                        value={draftAccountId}
+                        onValueChange={setDraftAccountId}
+                        options={accountOptions}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="journal-wrong">What went wrong</Label>
-                      <Textarea
-                        id="journal-wrong"
-                        rows={4}
-                        value={draft.whatWentWrong ?? ""}
-                        onChange={(event) =>
-                          updateDraftField("whatWentWrong", event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="journal-tomorrow">
-                        Tomorrow improvement
-                      </Label>
-                      <Textarea
-                        id="journal-tomorrow"
-                        rows={4}
-                        value={draft.tomorrowImprovement ?? ""}
-                        onChange={(event) =>
-                          updateDraftField(
-                            "tomorrowImprovement",
-                            event.target.value,
-                          )
-                        }
+                      <Label htmlFor="journal-date">Date</Label>
+                      <Input
+                        id="journal-date"
+                        type="date"
+                        value={draftDate}
+                        onChange={(event) => setDraftDate(event.target.value)}
                       />
                     </div>
                   </div>
-                </div>
+                ) : null}
 
-                <Button type="button" disabled={isSaving} onClick={handleSave}>
-                  {isSaving ? "Saving..." : "Save entry"}
-                </Button>
+                <JournalFields
+                  idPrefix="daily"
+                  values={journalValues}
+                  onChange={setJournalValues}
+                />
               </>
             ) : (
               <p className="text-muted-foreground text-sm">

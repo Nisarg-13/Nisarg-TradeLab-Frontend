@@ -16,10 +16,13 @@ import {
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RangeInput } from "@/components/ui/range-input";
 import { Textarea } from "@/components/ui/textarea";
 import { createTrade, updateTrade } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
+import { MARKET_BIAS_SELECT_OPTIONS } from "@/lib/constants/market-bias";
 import type { TradingAccount } from "@/types/account";
+import type { MarketBias } from "@/types/journal";
 import type { TradeDirection } from "@/types/risk";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
 import type { Trade, TradeEmotion } from "@/types/trade";
@@ -147,8 +150,21 @@ export function TradeForm({
   const [postTradeEmotion, setPostTradeEmotion] = useState(
     trade?.review?.postTradeEmotion ?? "",
   );
+  const [marketBias, setMarketBias] = useState(trade?.review?.marketBias ?? "");
+  const [preTradePlan, setPreTradePlan] = useState(
+    trade?.review?.preTradePlan ?? "",
+  );
+  const [postTradePlan, setPostTradePlan] = useState(
+    trade?.review?.postTradePlan ?? "",
+  );
   const [confidenceScore, setConfidenceScore] = useState(
-    trade?.review?.confidenceScore?.toString() ?? "",
+    trade?.review?.confidenceScore ?? 7,
+  );
+  const [whatWentWell, setWhatWentWell] = useState(
+    trade?.review?.whatWentWell ?? "",
+  );
+  const [whatWentWrong, setWhatWentWrong] = useState(
+    trade?.review?.whatWentWrong ?? "",
   );
   const [followedPlan, setFollowedPlan] = useState(
     trade?.review?.followedPlan === null ||
@@ -254,21 +270,38 @@ export function TradeForm({
 
   function buildReviewPayload() {
     const review = {
+      marketBias: marketBias ? (marketBias as MarketBias) : undefined,
+      preTradePlan: preTradePlan || undefined,
+      postTradePlan: postTradePlan || undefined,
       preTradeEmotion: preTradeEmotion
         ? (preTradeEmotion as TradeEmotion)
         : undefined,
       postTradeEmotion: postTradeEmotion
         ? (postTradeEmotion as TradeEmotion)
         : undefined,
-      confidenceScore: confidenceScore ? Number(confidenceScore) : undefined,
+      confidenceScore,
       followedPlan: followedPlan === "" ? undefined : followedPlan === "true",
       entryReason: entryReason || undefined,
+      whatWentWell: whatWentWell || undefined,
+      whatWentWrong: whatWentWrong || undefined,
       notes: notes || undefined,
       lesson: lesson || undefined,
     };
 
-    const hasReview = Object.values(review).some(
-      (value) => value !== undefined,
+    const hasReview = Boolean(
+      marketBias ||
+      preTradePlan ||
+      postTradePlan ||
+      preTradeEmotion ||
+      postTradeEmotion ||
+      followedPlan !== "" ||
+      entryReason ||
+      whatWentWell ||
+      whatWentWrong ||
+      notes ||
+      lesson ||
+      trade?.review?.confidenceScore !== undefined ||
+      confidenceScore !== 7,
     );
 
     return hasReview ? review : undefined;
@@ -443,8 +476,10 @@ export function TradeForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Psychology</CardTitle>
-          <CardDescription>Tags, mistakes, and trade review.</CardDescription>
+          <CardTitle>Psychology & journal</CardTitle>
+          <CardDescription>
+            Tags, mistakes, emotions, and per-trade journal notes.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -507,6 +542,22 @@ export function TradeForm({
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
+              <Label htmlFor="market-bias">Market bias</Label>
+              <DropdownSelect
+                id="market-bias"
+                name="market-bias"
+                options={MARKET_BIAS_SELECT_OPTIONS}
+                value={marketBias}
+                onValueChange={setMarketBias}
+              />
+            </div>
+            <RangeInput
+              id="confidence"
+              label="Confidence while taking trade"
+              value={confidenceScore}
+              onChange={setConfidenceScore}
+            />
+            <div className="space-y-2">
               <Label htmlFor="pre-emotion">Pre-trade emotion</Label>
               <DropdownSelect
                 id="pre-emotion"
@@ -526,18 +577,7 @@ export function TradeForm({
                 onValueChange={setPostTradeEmotion}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confidence">Confidence (1-10)</Label>
-              <Input
-                id="confidence"
-                type="number"
-                min="1"
-                max="10"
-                value={confidenceScore}
-                onChange={(event) => setConfidenceScore(event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="followed-plan">Followed plan</Label>
               <DropdownSelect
                 id="followed-plan"
@@ -549,6 +589,46 @@ export function TradeForm({
                 ]}
                 value={followedPlan}
                 onValueChange={setFollowedPlan}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pre-trade-plan">Plan before taking the trade</Label>
+            <Textarea
+              id="pre-trade-plan"
+              rows={4}
+              value={preTradePlan}
+              onChange={(event) => setPreTradePlan(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="post-trade-plan">Plan after taking the trade</Label>
+            <Textarea
+              id="post-trade-plan"
+              rows={4}
+              value={postTradePlan}
+              onChange={(event) => setPostTradePlan(event.target.value)}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="what-went-well">What went well</Label>
+              <Textarea
+                id="what-went-well"
+                rows={4}
+                value={whatWentWell}
+                onChange={(event) => setWhatWentWell(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="what-went-wrong">What went wrong</Label>
+              <Textarea
+                id="what-went-wrong"
+                rows={4}
+                value={whatWentWrong}
+                onChange={(event) => setWhatWentWrong(event.target.value)}
               />
             </div>
           </div>

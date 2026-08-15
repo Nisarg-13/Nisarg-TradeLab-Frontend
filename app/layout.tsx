@@ -43,7 +43,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col">
         <ThemeProvider>
-          <ClerkProvider appearance={{ theme: shadcn }}>
+          <ClerkProvider appearance={{ theme: shadcn }} afterSignOutUrl="/">
             {children}
           </ClerkProvider>
           <AppToaster />

@@ -8,16 +8,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { AddExecutionDialog } from "@/components/trades/add-execution-dialog";
 import { CloseTradeDialog } from "@/components/trades/close-trade-dialog";
 import { TradeExecutionsTable } from "@/components/trades/trade-executions-table";
+import { TradeJournalCard } from "@/components/trades/trade-journal-card";
 import { TradeSummaryCard } from "@/components/trades/trade-summary-card";
 import { TradeTimeline } from "@/components/trades/trade-timeline";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type { Trade } from "@/types/trade";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +55,8 @@ export function TradeDetailView({ initialTrade }: { initialTrade: Trade }) {
 
       <TradeSummaryCard trade={trade} />
 
+      <TradeJournalCard trade={trade} onUpdated={handleUpdated} />
+
       <div className="grid gap-6 xl:grid-cols-2">
         <TradeExecutionsTable
           executions={trade.executions}
@@ -68,53 +64,6 @@ export function TradeDetailView({ initialTrade }: { initialTrade: Trade }) {
         />
         <TradeTimeline events={trade.events} />
       </div>
-
-      {trade.review ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Review</CardTitle>
-            <CardDescription>
-              Psychology and notes for this trade.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            {trade.review.preTradeEmotion ? (
-              <div>
-                <p className="text-muted-foreground text-sm">
-                  Pre-trade emotion
-                </p>
-                <p>{trade.review.preTradeEmotion}</p>
-              </div>
-            ) : null}
-            {trade.review.postTradeEmotion ? (
-              <div>
-                <p className="text-muted-foreground text-sm">
-                  Post-trade emotion
-                </p>
-                <p>{trade.review.postTradeEmotion}</p>
-              </div>
-            ) : null}
-            {trade.review.entryReason ? (
-              <div className="sm:col-span-2">
-                <p className="text-muted-foreground text-sm">Entry reason</p>
-                <p>{trade.review.entryReason}</p>
-              </div>
-            ) : null}
-            {trade.review.notes ? (
-              <div className="sm:col-span-2">
-                <p className="text-muted-foreground text-sm">Notes</p>
-                <p>{trade.review.notes}</p>
-              </div>
-            ) : null}
-            {trade.review.lesson ? (
-              <div className="sm:col-span-2">
-                <p className="text-muted-foreground text-sm">Lesson</p>
-                <p>{trade.review.lesson}</p>
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }

@@ -13,11 +13,12 @@ import {
 
 export function HeaderClock() {
   const { timezone } = useTimezone();
-  const now = useSyncExternalStore(
+  const timestamp = useSyncExternalStore(
     subscribeToClock,
     getClockSnapshot,
     getServerClockSnapshot,
   );
+  const now = timestamp !== null ? new Date(timestamp) : null;
 
   const time = now ? formatClockTime(now, timezone) : "--:--:--";
   const period = now ? formatClockPeriod(now, timezone) : "";

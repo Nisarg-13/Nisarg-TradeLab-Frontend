@@ -67,18 +67,29 @@ export function getTimezoneLabel(timeZone: string) {
   }
 }
 
+let clockSnapshot: number | null = null;
+
 export function subscribeToClock(onStoreChange: () => void) {
   if (typeof window === "undefined") {
     return () => {};
   }
 
-  const timer = window.setInterval(onStoreChange, 1000);
+  clockSnapshot = Date.now();
+
+  const timer = window.setInterval(() => {
+    clockSnapshot = Date.now();
+    onStoreChange();
+  }, 1000);
 
   return () => window.clearInterval(timer);
 }
 
 export function getClockSnapshot() {
-  return new Date();
+  if (clockSnapshot === null) {
+    clockSnapshot = Date.now();
+  }
+
+  return clockSnapshot;
 }
 
 export function getServerClockSnapshot() {

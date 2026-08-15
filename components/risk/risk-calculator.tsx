@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -23,6 +24,7 @@ import type {
   RiskMode,
   TradeDirection,
 } from "@/types/risk";
+import { cn } from "@/lib/utils";
 
 const RISK_PRESETS = [0.25, 0.5, 0.75, 1];
 
@@ -119,6 +121,31 @@ export function RiskCalculator() {
     } finally {
       setIsCalculating(false);
     }
+  }
+
+  function buildCreateTradeHref() {
+    if (!result) return "/trades/new";
+
+    const params = new URLSearchParams({
+      symbol: result.symbol,
+      direction: result.direction,
+      entry: result.entryPrice,
+      stopLoss: result.stopLoss,
+      accountBalance: result.accountBalance,
+      riskAmount: result.riskAmount,
+      riskPercentage: result.riskPercentage,
+      volume: result.recommendedPositionSize,
+    });
+
+    if (result.takeProfit) {
+      params.set("takeProfit", result.takeProfit);
+    }
+
+    if (result.riskReward) {
+      params.set("plannedRR", result.riskReward);
+    }
+
+    return `/trades/new?${params.toString()}`;
   }
 
   return (
@@ -330,6 +357,16 @@ export function RiskCalculator() {
                 results.
               </p>
             )}
+            {result ? (
+              <div className="pt-4">
+                <Link
+                  href={buildCreateTradeHref()}
+                  className={cn(buttonVariants(), "w-full sm:w-auto")}
+                >
+                  Create trade
+                </Link>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 

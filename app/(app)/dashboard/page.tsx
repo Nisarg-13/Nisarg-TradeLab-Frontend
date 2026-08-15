@@ -14,11 +14,11 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-muted-foreground text-sm">Dashboard</p>
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <p className="text-muted-foreground text-base">Dashboard</p>
+        <h1 className="text-4xl font-semibold tracking-tight">
           {welcomeEmail ? `Welcome back, ${welcomeEmail}` : "Welcome back"}
         </h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl">
+        <p className="text-muted-foreground mt-2 max-w-2xl text-base">
           Your authenticated app shell is ready. Trading accounts, journal
           workflows, analytics, and AI coaching will arrive in the next phases.
         </p>
@@ -32,7 +32,7 @@ export default async function DashboardPage() {
         ].map((item) => (
           <div
             key={item}
-            className="bg-card text-muted-foreground rounded-xl border p-5 text-sm"
+            className="bg-card text-muted-foreground rounded-xl border p-5 text-base"
           >
             {item}
           </div>

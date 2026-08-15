@@ -15,7 +15,7 @@ export function AppSidebar() {
         <Link href="/dashboard" className="font-semibold tracking-tight">
           Nisarg&apos;s TradeLab
         </Link>
-        <p className="text-muted-foreground mt-1 text-xs">
+        <p className="text-muted-foreground mt-1 text-sm">
           Track. Analyze. Improve.
         </p>
       </div>
@@ -28,7 +28,7 @@ export function AppSidebar() {
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-base transition-colors",
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",

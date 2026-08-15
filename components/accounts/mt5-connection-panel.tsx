@@ -129,7 +129,9 @@ export function Mt5ConnectionPanel({
         tradingAccountId,
       );
       toast.success(
-        `Recalculated ${response.data.updated} of ${response.data.total} MT5 trades.`,
+        response.data.removedDuplicates > 0
+          ? `Removed ${response.data.removedDuplicates} duplicate executions and recalculated ${response.data.updated} trades.`
+          : `Recalculated ${response.data.updated} of ${response.data.total} MT5 trades.`,
       );
     } catch (error) {
       toast.error(
@@ -236,7 +238,7 @@ export function Mt5ConnectionPanel({
                 disabled={isWorking}
                 onClick={handleRecalculateTrades}
               >
-                {isWorking ? "Recalculating..." : "Recalculate trade PnL"}
+                {isWorking ? "Recalculating..." : "Repair MT5 trades"}
               </Button>
               <Button
                 type="button"
@@ -251,8 +253,8 @@ export function Mt5ConnectionPanel({
         </div>
         {connection ? (
           <p className="text-muted-foreground text-xs">
-            Use recalculate after dashboard PnL fixes if older MT5 imports show
-            incorrect win rate or missing losses.
+            Use repair after reconnecting the same MT5 account — it removes
+            duplicate executions and recalculates PnL.
           </p>
         ) : null}
       </CardContent>

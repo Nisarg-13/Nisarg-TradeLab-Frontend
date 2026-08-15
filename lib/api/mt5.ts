@@ -45,12 +45,15 @@ export async function recalculateMt5Trades(
   getAuthToken: () => Promise<string | null>,
   tradingAccountId: string,
 ) {
-  return apiRequest<ApiDataResponse<{ updated: number; total: number }>>(
-    "/api/v1/mt5/recalculate-trades",
-    {
-      method: "POST",
-      body: JSON.stringify({ tradingAccountId }),
-      getAuthToken,
-    },
-  );
+  return apiRequest<
+    ApiDataResponse<{
+      removedDuplicates: number;
+      updated: number;
+      total: number;
+    }>
+  >("/api/v1/mt5/recalculate-trades", {
+    method: "POST",
+    body: JSON.stringify({ tradingAccountId }),
+    getAuthToken,
+  });
 }

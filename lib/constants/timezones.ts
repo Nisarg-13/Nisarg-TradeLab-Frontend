@@ -66,3 +66,21 @@ export function getTimezoneLabel(timeZone: string) {
     return timeZone;
   }
 }
+
+export function subscribeToClock(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const timer = window.setInterval(onStoreChange, 1000);
+
+  return () => window.clearInterval(timer);
+}
+
+export function getClockSnapshot() {
+  return new Date();
+}
+
+export function getServerClockSnapshot() {
+  return null;
+}

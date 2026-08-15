@@ -1,47 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { useTimezone } from "@/components/providers/timezone-provider";
 import {
   formatClockPeriod,
   formatClockTime,
-  TIMEZONE_CHANGE_EVENT,
+  getClockSnapshot,
+  getServerClockSnapshot,
+  subscribeToClock,
 } from "@/lib/constants/timezones";
 
 export function HeaderClock() {
   const { timezone } = useTimezone();
-  const [now, setNow] = useState(() => new Date());
+  const now = useSyncExternalStore(
+    subscribeToClock,
+    getClockSnapshot,
+    getServerClockSnapshot,
+  );
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setNow(new Date());
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    function handleTimezoneChange() {
-      setNow(new Date());
-    }
-
-    window.addEventListener(TIMEZONE_CHANGE_EVENT, handleTimezoneChange);
-    return () =>
-      window.removeEventListener(TIMEZONE_CHANGE_EVENT, handleTimezoneChange);
-  }, []);
-
-  const time = formatClockTime(now, timezone);
-  const period = formatClockPeriod(now, timezone);
+  const time = now ? formatClockTime(now, timezone) : "--:--:--";
+  const period = now ? formatClockPeriod(now, timezone) : "";
 
   return (
     <div
       className="text-right"
       aria-live="polite"
-      aria-label={`Current time in ${timezone}`}
+      aria-label={now ? `Current time in ${timezone}` : "Loading current time"}
     >
-      <p className="font-mono text-sm font-medium tabular-nums">
-        {time} {period}
+      <p
+        className="font-mono text-sm font-medium tabular-nums"
+        suppressHydrationWarning
+      >
+        {time}
+        {period ? ` ${period}` : null}
       </p>
     </div>
   );

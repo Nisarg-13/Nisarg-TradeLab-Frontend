@@ -91,37 +91,43 @@ export function DropdownSelect({
       {open ? (
         <ul
           role="listbox"
-          className="bg-popover text-popover-foreground absolute top-[calc(100%+0.25rem)] z-50 max-h-60 w-full overflow-auto rounded-lg border p-1 shadow-md"
+          className="bg-popover text-popover-foreground absolute top-[calc(100%+0.25rem)] z-[100] max-h-60 w-full overflow-auto rounded-lg border p-1 shadow-md"
         >
-          {options.map((option) => {
-            const isSelected = selectedValue === option.value;
+          {options.length === 0 ? (
+            <li className="text-muted-foreground px-2 py-2 text-sm">
+              No options available
+            </li>
+          ) : (
+            options.map((option) => {
+              const isSelected = selectedValue === option.value;
 
-            return (
-              <li key={option.value}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={isSelected}
-                  onClick={() => {
-                    updateValue(option.value);
-                    setOpen(false);
-                  }}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors",
-                    isSelected ? "bg-muted font-medium" : "hover:bg-muted/70",
-                  )}
-                >
-                  <Check
+              return (
+                <li key={option.value}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      updateValue(option.value);
+                      setOpen(false);
+                    }}
                     className={cn(
-                      "size-4 shrink-0",
-                      isSelected ? "opacity-100" : "opacity-0",
+                      "flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors",
+                      isSelected ? "bg-muted font-medium" : "hover:bg-muted/70",
                     )}
-                  />
-                  {option.label}
-                </button>
-              </li>
-            );
-          })}
+                  >
+                    <Check
+                      className={cn(
+                        "size-4 shrink-0",
+                        isSelected ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    {option.label}
+                  </button>
+                </li>
+              );
+            })
+          )}
         </ul>
       ) : null}
     </div>

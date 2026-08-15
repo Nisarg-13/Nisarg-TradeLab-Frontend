@@ -40,3 +40,16 @@ export async function revokeMt5Connection(
     },
   );
 }
+
+export async function recalculateMt5Trades(
+  getAuthToken: () => Promise<string | null>,
+  tradingAccountId: string,
+) {
+  return apiRequest<
+    ApiDataResponse<{ updated: number; total: number }>
+  >("/api/v1/mt5/recalculate-trades", {
+    method: "POST",
+    body: JSON.stringify({ tradingAccountId }),
+    getAuthToken,
+  });
+}

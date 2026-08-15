@@ -15,6 +15,7 @@ import {
 import {
   createMt5Connection,
   listMt5Connections,
+  recalculateMt5Trades,
   revokeMt5Connection,
 } from "@/lib/api/mt5";
 import { useClientAuthToken } from "@/lib/auth/client";
@@ -117,6 +118,30 @@ export function Mt5ConnectionPanel({
     }
   }
 
+  async function handleRecalculateTrades() {
+    if (!connection) return;
+
+    setIsWorking(true);
+
+    try {
+      const response = await recalculateMt5Trades(
+        getAuthToken,
+        tradingAccountId,
+      );
+      toast.success(
+        `Recalculated ${response.data.updated} of ${response.data.total} MT5 trades.`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to recalculate MT5 trades.",
+      );
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
   async function copyKey() {
     if (!connectionKey) return;
 
@@ -204,16 +229,32 @@ export function Mt5ConnectionPanel({
               {isWorking ? "Creating..." : "Generate connection key"}
             </Button>
           ) : (
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={isWorking}
-              onClick={handleRevoke}
-            >
-              {isWorking ? "Revoking..." : "Revoke connection"}
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isWorking}
+                onClick={handleRecalculateTrades}
+              >
+                {isWorking ? "Recalculating..." : "Recalculate trade PnL"}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isWorking}
+                onClick={handleRevoke}
+              >
+                {isWorking ? "Revoking..." : "Revoke connection"}
+              </Button>
+            </>
           )}
         </div>
+        {connection ? (
+          <p className="text-muted-foreground text-xs">
+            Use recalculate after dashboard PnL fixes if older MT5 imports show
+            incorrect win rate or missing losses.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

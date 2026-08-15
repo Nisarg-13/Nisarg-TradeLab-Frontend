@@ -6,15 +6,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { TradeStatusBadge } from "@/components/trades/trade-status-badge";
+import { FormattedDateTime } from "@/components/formatting/formatted-datetime";
 import { formatMoney } from "@/lib/formatting/currency";
-import {
-  formatDateTimeWithSeconds,
-  formatTradeHoldingDuration,
-} from "@/lib/formatting/datetime";
+import { formatTradeHoldingDuration } from "@/lib/formatting/datetime";
 import { formatTradePrice } from "@/lib/formatting/trade-price";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
 import type { Trade } from "@/types/trade";
+
+import type { ReactNode } from "react";
 
 function DetailItem({
   label,
@@ -22,7 +22,7 @@ function DetailItem({
   valueClassName,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   valueClassName?: string;
 }) {
   return (
@@ -54,11 +54,11 @@ export function TradeSummaryCard({ trade }: { trade: Trade }) {
       <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <DetailItem
           label="Opened"
-          value={formatDateTimeWithSeconds(trade.openedAt)}
+          value={<FormattedDateTime value={trade.openedAt} />}
         />
         <DetailItem
           label="Closed"
-          value={formatDateTimeWithSeconds(trade.closedAt)}
+          value={<FormattedDateTime value={trade.closedAt} />}
         />
         <DetailItem
           label="Hold time"

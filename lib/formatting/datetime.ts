@@ -1,6 +1,18 @@
 import type { TradeStatus } from "@/types/trade";
 
-export function formatDateTimeWithSeconds(value: string | null | undefined) {
+type DateTimeStyleOptions = {
+  dateStyle?: "full" | "long" | "medium" | "short";
+  timeStyle?: "full" | "long" | "medium" | "short";
+};
+
+export function formatDateTime(
+  value: string | null | undefined,
+  timeZone: string,
+  options: DateTimeStyleOptions = {
+    dateStyle: "medium",
+    timeStyle: "short",
+  },
+) {
   if (!value) {
     return "—";
   }
@@ -12,9 +24,19 @@ export function formatDateTimeWithSeconds(value: string | null | undefined) {
   }
 
   return new Intl.DateTimeFormat("en-US", {
+    ...options,
+    timeZone,
+  }).format(date);
+}
+
+export function formatDateTimeWithSeconds(
+  value: string | null | undefined,
+  timeZone: string,
+) {
+  return formatDateTime(value, timeZone, {
     dateStyle: "medium",
     timeStyle: "medium",
-  }).format(date);
+  });
 }
 
 function formatDurationParts(totalSeconds: number) {

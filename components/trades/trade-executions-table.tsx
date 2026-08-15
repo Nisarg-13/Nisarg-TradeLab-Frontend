@@ -5,8 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { FormattedDateTime } from "@/components/formatting/formatted-datetime";
 import { formatMoney } from "@/lib/formatting/currency";
-import { formatDateTimeWithSeconds } from "@/lib/formatting/datetime";
 import { formatTradePrice } from "@/lib/formatting/trade-price";
 import type { TradeExecution } from "@/types/trade";
 
@@ -73,7 +73,7 @@ export function TradeExecutionsTable({
                     {formatCharge(execution.fee, currency)}
                   </td>
                   <td className="py-3">
-                    {formatDateTimeWithSeconds(execution.executedAt)}
+                    <FormattedDateTime value={execution.executedAt} />
                   </td>
                 </tr>
               ))}

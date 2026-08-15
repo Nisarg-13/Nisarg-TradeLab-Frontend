@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { formatDateTimeWithSeconds } from "@/lib/formatting/datetime";
+import { FormattedDateTime } from "@/components/formatting/formatted-datetime";
 import type { TradeEvent } from "@/types/trade";
 
 function formatEventLabel(type: TradeEvent["type"]) {
@@ -27,7 +27,7 @@ export function TradeTimeline({ events }: { events: TradeEvent[] }) {
             <div key={event.id} className="border-l-2 pl-4">
               <p className="font-medium">{formatEventLabel(event.type)}</p>
               <p className="text-muted-foreground text-sm">
-                {formatDateTimeWithSeconds(event.occurredAt)}
+                <FormattedDateTime value={event.occurredAt} />
               </p>
               {event.newValue ? (
                 <p className="text-sm">{event.newValue}</p>

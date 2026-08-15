@@ -22,6 +22,7 @@ import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
 } from "@/lib/hooks/use-persisted-account-id";
+import { useFormatDateTime } from "@/lib/hooks/use-format-datetime";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type {
@@ -103,6 +104,7 @@ export function LiveTradesManager({
   initialData: LiveTradesResponse;
 }) {
   const getAuthToken = useClientAuthToken();
+  const { format: formatDateTime } = useFormatDateTime();
   const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
   const [data, setData] = useState(initialData);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(
@@ -169,11 +171,7 @@ export function LiveTradesManager({
           />
           {lastRefreshedAt ? (
             <p className="text-muted-foreground text-xs">
-              Last refreshed{" "}
-              {new Intl.DateTimeFormat("en-US", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }).format(new Date(lastRefreshedAt))}
+              Last refreshed {formatDateTime(lastRefreshedAt)}
             </p>
           ) : null}
         </div>

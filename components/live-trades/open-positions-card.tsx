@@ -13,17 +13,11 @@ import {
 } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/layout/empty-state";
+import { FormattedDateTime } from "@/components/formatting/formatted-datetime";
 import { formatMoney } from "@/lib/formatting/currency";
 import { formatTradePrice } from "@/lib/formatting/trade-price";
 import { cn } from "@/lib/utils";
 import type { LiveDataStatus, LiveTradePosition } from "@/types/live-trades";
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 function liveStatusTone(status: LiveDataStatus) {
   switch (status) {
@@ -149,14 +143,22 @@ export function OpenPositionsCard({
                       ? (position.currentR ?? "—")
                       : "—"}
                   </td>
-                  <td className="py-3">{formatDate(position.openedAt)}</td>
+                  <td className="py-3">
+                    <FormattedDateTime
+                      value={position.openedAt}
+                      withSeconds={false}
+                    />
+                  </td>
                   <td className="py-3">
                     <Badge className={liveStatusTone(position.liveStatus)}>
                       {position.liveStatus}
                     </Badge>
                     {position.lastSyncedAt ? (
                       <p className="text-muted-foreground mt-1 text-xs">
-                        {formatDate(position.lastSyncedAt)}
+                        <FormattedDateTime
+                          value={position.lastSyncedAt}
+                          withSeconds={false}
+                        />
                       </p>
                     ) : null}
                   </td>

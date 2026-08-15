@@ -1,9 +1,5 @@
 export type AccountType =
-  | "PERSONAL"
-  | "DEMO"
-  | "PROP_CHALLENGE"
-  | "FUNDED"
-  | "OTHER";
+  "PERSONAL" | "DEMO" | "PROP_CHALLENGE" | "FUNDED" | "OTHER";
 
 export type AccountSource = "MANUAL" | "MT5";
 

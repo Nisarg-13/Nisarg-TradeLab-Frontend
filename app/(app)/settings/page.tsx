@@ -15,17 +15,17 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-muted-foreground text-base">Settings</p>
-        <h1 className="text-4xl font-semibold tracking-tight">App Settings</h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl text-base">
-          Manage your profile preferences for timezone and reporting currency.
+        <p className="text-muted-foreground text-sm">Settings</p>
+        <h1 className="text-3xl font-semibold tracking-tight">App Settings</h1>
+        <p className="text-muted-foreground mt-2 max-w-2xl text-sm">
+          Manage your profile timezone for analytics and the live header clock.
         </p>
       </div>
 
       {profile ? (
-        <ProfileSettingsForm profile={profile} />
+        <ProfileSettingsForm key={profile.updatedAt} profile={profile} />
       ) : (
-        <p className="text-muted-foreground text-base">
+        <p className="text-muted-foreground text-sm">
           Unable to load profile settings. Please refresh and try again.
         </p>
       )}

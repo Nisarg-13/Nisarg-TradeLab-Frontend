@@ -52,7 +52,11 @@ export default async function EditTradePage({
       <PageHeader
         eyebrow="Journal"
         title="Edit trade"
-        description="Update stop loss, take profit, strategy, and psychology fields."
+        description={
+          trade.status === "OPEN"
+            ? "Update stop loss, take profit, strategy, and psychology fields."
+            : "Update strategy, entry criteria, mistakes, and journal fields."
+        }
       />
       <TradeForm
         mode="edit"

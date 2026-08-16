@@ -2,12 +2,14 @@ import { apiRequest } from "./client";
 import type {
   ApiDataResponse,
   CreateMistakeInput,
-  CreateStrategyInput,
   CreateTagInput,
+  CreateStrategyInput,
   Mistake,
   Strategy,
   Tag,
+  UpdateMistakeInput,
   UpdateStrategyInput,
+  UpdateTagInput,
 } from "@/types/strategy";
 
 export async function listStrategies(
@@ -44,6 +46,19 @@ export async function updateStrategy(
   );
 }
 
+export async function deleteStrategy(
+  getAuthToken: () => Promise<string | null>,
+  strategyId: string,
+) {
+  return apiRequest<ApiDataResponse<{ success: boolean }>>(
+    `/api/v1/strategies/${strategyId}`,
+    {
+      method: "DELETE",
+      getAuthToken,
+    },
+  );
+}
+
 export async function listTags(getAuthToken: () => Promise<string | null>) {
   return apiRequest<ApiDataResponse<Tag[]>>("/api/v1/tags", { getAuthToken });
 }
@@ -54,6 +69,18 @@ export async function createTag(
 ) {
   return apiRequest<ApiDataResponse<Tag>>("/api/v1/tags", {
     method: "POST",
+    body: JSON.stringify(input),
+    getAuthToken,
+  });
+}
+
+export async function updateTag(
+  getAuthToken: () => Promise<string | null>,
+  tagId: string,
+  input: UpdateTagInput,
+) {
+  return apiRequest<ApiDataResponse<Tag>>(`/api/v1/tags/${tagId}`, {
+    method: "PATCH",
     body: JSON.stringify(input),
     getAuthToken,
   });
@@ -84,6 +111,18 @@ export async function createMistake(
 ) {
   return apiRequest<ApiDataResponse<Mistake>>("/api/v1/mistakes", {
     method: "POST",
+    body: JSON.stringify(input),
+    getAuthToken,
+  });
+}
+
+export async function updateMistake(
+  getAuthToken: () => Promise<string | null>,
+  mistakeId: string,
+  input: UpdateMistakeInput,
+) {
+  return apiRequest<ApiDataResponse<Mistake>>(`/api/v1/mistakes/${mistakeId}`, {
+    method: "PATCH",
     body: JSON.stringify(input),
     getAuthToken,
   });

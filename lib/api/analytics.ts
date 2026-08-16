@@ -3,6 +3,11 @@ import type {
   AnalyticsQuery,
   AnalyticsSummary,
   ApiDataResponse,
+  BehaviorAnalytics,
+  DirectionAnalytics,
+  ConcentrationAnalytics,
+  ExecutionAnalytics,
+  EdgeFinderAnalytics,
   HeatmapData,
   HeatmapMetric,
   InstrumentPerformance,
@@ -11,9 +16,11 @@ import type {
   PeriodComparisonMode,
   PlanComplianceGroup,
   PsychologyAnalytics,
+  PlannedRrAnalytics,
   RiskStatGroup,
   RollingPerformance,
   StrategyPerformance,
+  TagAnalyticsGroup,
   TimeAnalytics,
   TradeMetricsGroup,
 } from "@/types/analytics";
@@ -121,6 +128,76 @@ export async function getMistakeAnalytics(
 ) {
   return apiRequest<ApiDataResponse<MistakeAnalyticsGroup[]>>(
     `/api/v1/analytics/mistakes${buildQuery(query)}`,
+    { getAuthToken },
+  );
+}
+
+export async function getTagAnalytics(
+  getAuthToken: () => Promise<string | null>,
+  query: AnalyticsQuery = {},
+) {
+  return apiRequest<ApiDataResponse<TagAnalyticsGroup[]>>(
+    `/api/v1/analytics/tags${buildQuery(query)}`,
+    { getAuthToken },
+  );
+}
+
+export async function getPlannedRrAnalytics(
+  getAuthToken: () => Promise<string | null>,
+  query: AnalyticsQuery = {},
+) {
+  return apiRequest<ApiDataResponse<PlannedRrAnalytics>>(
+    `/api/v1/analytics/planned-rr${buildQuery(query)}`,
+    { getAuthToken },
+  );
+}
+
+export async function getConcentrationAnalytics(
+  getAuthToken: () => Promise<string | null>,
+  query: AnalyticsQuery = {},
+) {
+  return apiRequest<ApiDataResponse<ConcentrationAnalytics>>(
+    `/api/v1/analytics/concentration${buildQuery(query)}`,
+    { getAuthToken },
+  );
+}
+
+export async function getExecutionAnalytics(
+  getAuthToken: () => Promise<string | null>,
+  query: AnalyticsQuery = {},
+) {
+  return apiRequest<ApiDataResponse<ExecutionAnalytics>>(
+    `/api/v1/analytics/execution${buildQuery(query)}`,
+    { getAuthToken },
+  );
+}
+
+export async function getEdgeFinderAnalytics(
+  getAuthToken: () => Promise<string | null>,
+  query: AnalyticsQuery = {},
+) {
+  return apiRequest<ApiDataResponse<EdgeFinderAnalytics>>(
+    `/api/v1/analytics/edge-finder${buildQuery(query)}`,
+    { getAuthToken },
+  );
+}
+
+export async function getBehaviorAnalytics(
+  getAuthToken: () => Promise<string | null>,
+  query: AnalyticsQuery = {},
+) {
+  return apiRequest<ApiDataResponse<BehaviorAnalytics>>(
+    `/api/v1/analytics/behavior${buildQuery(query)}`,
+    { getAuthToken },
+  );
+}
+
+export async function getDirectionAnalytics(
+  getAuthToken: () => Promise<string | null>,
+  query: AnalyticsQuery = {},
+) {
+  return apiRequest<ApiDataResponse<DirectionAnalytics>>(
+    `/api/v1/analytics/direction${buildQuery(query)}`,
     { getAuthToken },
   );
 }

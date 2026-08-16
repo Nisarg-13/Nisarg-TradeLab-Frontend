@@ -1,13 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AnalyticsFilters } from "@/components/analytics/analytics-filters";
+import { AnalyticsOverviewCards } from "@/components/analytics/analytics-overview-cards";
+import { ConcentrationPanel } from "@/components/analytics/concentration-panel";
+import { EdgeFinderPanel } from "@/components/analytics/edge-finder-panel";
+import { ExecutionAnalyticsPanel } from "@/components/analytics/execution-analytics-panel";
+import { BehaviorAnalyticsPanel } from "@/components/analytics/behavior-analytics-panel";
+import { DirectionAnalyticsPanel } from "@/components/analytics/direction-analytics-panel";
+import { PlannedRrPanel } from "@/components/analytics/planned-rr-panel";
 import { MetricsGroupsTable } from "@/components/analytics/metrics-groups-table";
 import { PeriodComparisonPanel } from "@/components/analytics/period-comparison-panel";
 import { TimeHeatmap } from "@/components/analytics/time-heatmap";
-import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-cards";
 import { DailyPerformanceCalendar } from "@/components/dashboard/daily-performance-calendar";
 import { EquityCurveChart } from "@/components/dashboard/equity-curve-chart";
 import {
@@ -26,19 +33,31 @@ import {
 } from "@/components/ui/card";
 import {
   getAnalyticsSummary,
+  getBehaviorAnalytics,
+  getConcentrationAnalytics,
+  getDirectionAnalytics,
   getDurationAnalytics,
+  getEdgeFinderAnalytics,
+  getExecutionAnalytics,
   getHeatmapAnalytics,
   getInstrumentPerformance,
   getMistakeAnalytics,
   getPeriodComparison,
+  getPlannedRrAnalytics,
   getPlanCompliance,
   getPsychologyAnalytics,
   getRiskStats,
   getRollingPerformance,
   getStrategyPerformance,
+  getTagAnalytics,
   getTimeAnalytics,
 } from "@/lib/api/analytics";
 import { useClientAuthToken } from "@/lib/auth/client";
+import {
+  analyticsTabFromParams,
+  parseAnalyticsQuery,
+  serializeAnalyticsTab,
+} from "@/lib/analytics/query-state";
 import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
@@ -48,30 +67,43 @@ import type { TradingAccount } from "@/types/account";
 import type {
   AnalyticsQuery,
   AnalyticsSummary,
+  BehaviorAnalytics,
+  ConcentrationAnalytics,
+  DirectionAnalytics,
+  EdgeFinderAnalytics,
+  ExecutionAnalytics,
   HeatmapMetric,
   InstrumentPerformance,
   MistakeAnalyticsGroup,
   PeriodComparison,
   PeriodComparisonMode,
+  PlannedRrAnalytics,
   PlanComplianceGroup,
   PsychologyAnalytics,
   RiskStatGroup,
   RollingPerformance,
   StrategyPerformance,
+  TagAnalyticsGroup,
   TimeAnalytics,
   TradeMetricsGroup,
   HeatmapCell,
 } from "@/types/analytics";
-import type { Mistake, Strategy } from "@/types/strategy";
+import type { Mistake, Strategy, Tag } from "@/types/strategy";
 
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "instruments", label: "Instruments" },
   { id: "strategies", label: "Strategies" },
+  { id: "direction", label: "Long / Short" },
   { id: "time", label: "Time" },
   { id: "risk", label: "Risk" },
   { id: "psychology", label: "Psychology" },
+  { id: "setups", label: "Entry criteria" },
+  { id: "planned-rr", label: "Planned R" },
+  { id: "behavior", label: "Behavior" },
   { id: "mistakes", label: "Mistakes" },
+  { id: "execution", label: "Execution" },
+  { id: "edge-finder", label: "Edge Finder" },
   { id: "compare", label: "Compare" },
 ] as const;
 
@@ -80,6 +112,7 @@ type AnalyticsTab = (typeof TABS)[number]["id"];
 export function AnalyticsManager({
   accounts,
   strategies,
+  tags,
   mistakes,
   initialSummary,
   initialInstruments,
@@ -94,9 +127,17 @@ export function AnalyticsManager({
   initialDuration,
   initialRolling,
   initialComparison,
+  initialDirection,
+  initialBehavior,
+  initialTagAnalytics,
+  initialPlannedRr,
+  initialConcentration,
+  initialExecution,
+  initialEdgeFinder,
 }: {
   accounts: TradingAccount[];
   strategies: Strategy[];
+  tags: Tag[];
   mistakes: Mistake[];
   initialSummary: AnalyticsSummary;
   initialInstruments: InstrumentPerformance[];
@@ -111,11 +152,31 @@ export function AnalyticsManager({
   initialDuration: TradeMetricsGroup[];
   initialRolling: RollingPerformance;
   initialComparison: PeriodComparison;
+  initialDirection: DirectionAnalytics;
+  initialBehavior: BehaviorAnalytics;
+  initialTagAnalytics: TagAnalyticsGroup[];
+  initialPlannedRr: PlannedRrAnalytics;
+  initialConcentration: ConcentrationAnalytics;
+  initialExecution: ExecutionAnalytics;
+  initialEdgeFinder: EdgeFinderAnalytics;
 }) {
   const getAuthToken = useClientAuthToken();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialFilters = useMemo(
+    () => parseAnalyticsQuery(searchParams),
+    [searchParams],
+  );
+  const initialTab = useMemo(
+    () => analyticsTabFromParams(searchParams) as AnalyticsTab,
+    [searchParams],
+  );
+  const hasHydratedFilters = useRef(false);
   const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
-  const [activeTab, setActiveTab] = useState<AnalyticsTab>("overview");
-  const [filters, setFilters] = useState<AnalyticsQuery>({});
+  const [activeTab, setActiveTab] = useState<AnalyticsTab>(
+    TABS.some((tab) => tab.id === initialTab) ? initialTab : "overview",
+  );
+  const [filters, setFilters] = useState<AnalyticsQuery>(initialFilters);
   const [isLoading, setIsLoading] = useState(false);
   const [summary, setSummary] = useState(initialSummary);
   const [instruments, setInstruments] = useState(initialInstruments);
@@ -133,6 +194,18 @@ export function AnalyticsManager({
   const [durationAnalytics, setDurationAnalytics] = useState(initialDuration);
   const [rolling, setRolling] = useState(initialRolling);
   const [comparison, setComparison] = useState(initialComparison);
+  const [directionAnalytics, setDirectionAnalytics] =
+    useState(initialDirection);
+  const [behaviorAnalytics, setBehaviorAnalytics] = useState(initialBehavior);
+  const [tagAnalytics, setTagAnalytics] = useState(initialTagAnalytics);
+  const [plannedRrAnalytics, setPlannedRrAnalytics] =
+    useState(initialPlannedRr);
+  const [concentrationAnalytics, setConcentrationAnalytics] =
+    useState(initialConcentration);
+  const [executionAnalytics, setExecutionAnalytics] =
+    useState(initialExecution);
+  const [edgeFinderAnalytics, setEdgeFinderAnalytics] =
+    useState(initialEdgeFinder);
   const [comparisonMode, setComparisonMode] = useState<PeriodComparisonMode>(
     initialComparison.mode,
   );
@@ -153,6 +226,18 @@ export function AnalyticsManager({
     [accountId, filters],
   );
 
+  function syncUrl(nextFilters: AnalyticsQuery, tab = activeTab) {
+    router.replace(
+      `/analytics/overview${serializeAnalyticsTab(tab, nextFilters)}`,
+      { scroll: false },
+    );
+  }
+
+  function handleTabChange(tab: AnalyticsTab) {
+    setActiveTab(tab);
+    syncUrl(queryFilters, tab);
+  }
+
   function handleFiltersChange(next: AnalyticsQuery) {
     setFilters(next);
 
@@ -162,6 +247,119 @@ export function AnalyticsManager({
     if (nextAccountId !== currentAccountId) {
       setAccountId(nextAccountId);
     }
+  }
+
+  const loadAnalytics = useCallback(
+    async (query: AnalyticsQuery = queryFilters) => {
+      setIsLoading(true);
+
+      try {
+        const [
+          summaryResponse,
+          instrumentsResponse,
+          strategiesResponse,
+          planComplianceResponse,
+          riskStatsResponse,
+          timeResponse,
+          heatmapResponse,
+          psychologyResponse,
+          mistakesResponse,
+          durationResponse,
+          rollingResponse,
+          comparisonResponse,
+          directionResponse,
+          behaviorResponse,
+          tagsResponse,
+          plannedRrResponse,
+          concentrationResponse,
+          executionResponse,
+          edgeFinderResponse,
+        ] = await Promise.all([
+          getAnalyticsSummary(getAuthToken, query),
+          getInstrumentPerformance(getAuthToken, query),
+          getStrategyPerformance(getAuthToken, query),
+          getPlanCompliance(getAuthToken, query),
+          getRiskStats(getAuthToken, query),
+          getTimeAnalytics(getAuthToken, query),
+          getHeatmapAnalytics(getAuthToken, query, heatmapMetric),
+          getPsychologyAnalytics(getAuthToken, query),
+          getMistakeAnalytics(getAuthToken, query),
+          getDurationAnalytics(getAuthToken, query),
+          getRollingPerformance(getAuthToken, query),
+          getPeriodComparison(
+            getAuthToken,
+            query,
+            comparisonMode,
+            comparisonMode === "CUSTOM" ? customDates : undefined,
+          ),
+          getDirectionAnalytics(getAuthToken, query),
+          getBehaviorAnalytics(getAuthToken, query),
+          getTagAnalytics(getAuthToken, query),
+          getPlannedRrAnalytics(getAuthToken, query),
+          getConcentrationAnalytics(getAuthToken, query),
+          getExecutionAnalytics(getAuthToken, query),
+          getEdgeFinderAnalytics(getAuthToken, query),
+        ]);
+
+        setSummary(summaryResponse.data);
+        setInstruments(instrumentsResponse.data);
+        setStrategyRows(strategiesResponse.data);
+        setPlanCompliance(planComplianceResponse.data);
+        setRiskStats(riskStatsResponse.data);
+        setTimeAnalytics(timeResponse.data);
+        setHeatmapCells(heatmapResponse.data.cells);
+        setPsychology(psychologyResponse.data);
+        setMistakeAnalytics(mistakesResponse.data);
+        setDurationAnalytics(durationResponse.data);
+        setRolling(rollingResponse.data);
+        setComparison(comparisonResponse.data);
+        setDirectionAnalytics(directionResponse.data);
+        setBehaviorAnalytics(behaviorResponse.data);
+        setTagAnalytics(tagsResponse.data);
+        setPlannedRrAnalytics(plannedRrResponse.data);
+        setConcentrationAnalytics(concentrationResponse.data);
+        setExecutionAnalytics(executionResponse.data);
+        setEdgeFinderAnalytics(edgeFinderResponse.data);
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to refresh analytics.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [comparisonMode, customDates, getAuthToken, heatmapMetric, queryFilters],
+  );
+
+  useEffect(() => {
+    if (hasHydratedFilters.current) {
+      return;
+    }
+
+    hasHydratedFilters.current = true;
+
+    if (Object.keys(initialFilters).length === 0) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadAnalytics({
+        ...initialFilters,
+        tradingAccountId:
+          initialFilters.tradingAccountId ?? accountId ?? undefined,
+      });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [accountId, initialFilters, loadAnalytics]);
+
+  async function applyFilters() {
+    syncUrl(queryFilters);
+    await loadAnalytics();
   }
 
   useInitialPersistedAccountLoad(
@@ -188,63 +386,23 @@ export function AnalyticsManager({
     [mistakeAnalytics],
   );
 
-  async function loadAnalytics(query: AnalyticsQuery = queryFilters) {
-    setIsLoading(true);
-
-    try {
-      const [
-        summaryResponse,
-        instrumentsResponse,
-        strategiesResponse,
-        planComplianceResponse,
-        riskStatsResponse,
-        timeResponse,
-        heatmapResponse,
-        psychologyResponse,
-        mistakesResponse,
-        durationResponse,
-        rollingResponse,
-        comparisonResponse,
-      ] = await Promise.all([
-        getAnalyticsSummary(getAuthToken, query),
-        getInstrumentPerformance(getAuthToken, query),
-        getStrategyPerformance(getAuthToken, query),
-        getPlanCompliance(getAuthToken, query),
-        getRiskStats(getAuthToken, query),
-        getTimeAnalytics(getAuthToken, query),
-        getHeatmapAnalytics(getAuthToken, query, heatmapMetric),
-        getPsychologyAnalytics(getAuthToken, query),
-        getMistakeAnalytics(getAuthToken, query),
-        getDurationAnalytics(getAuthToken, query),
-        getRollingPerformance(getAuthToken, query),
-        getPeriodComparison(
-          getAuthToken,
-          query,
-          comparisonMode,
-          comparisonMode === "CUSTOM" ? customDates : undefined,
-        ),
-      ]);
-
-      setSummary(summaryResponse.data);
-      setInstruments(instrumentsResponse.data);
-      setStrategyRows(strategiesResponse.data);
-      setPlanCompliance(planComplianceResponse.data);
-      setRiskStats(riskStatsResponse.data);
-      setTimeAnalytics(timeResponse.data);
-      setHeatmapCells(heatmapResponse.data.cells);
-      setPsychology(psychologyResponse.data);
-      setMistakeAnalytics(mistakesResponse.data);
-      setDurationAnalytics(durationResponse.data);
-      setRolling(rollingResponse.data);
-      setComparison(comparisonResponse.data);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to refresh analytics.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const tagRows = useMemo(
+    () =>
+      tagAnalytics.map((row) => ({
+        key: row.tagId,
+        label: row.tagName,
+        tradeCount: row.tradeCount,
+        netPnl: row.netPnl,
+        totalR: row.totalR,
+        winRate: row.winRate,
+        averageR: row.averageR,
+        moneyExpectancy: row.moneyExpectancy,
+        rExpectancy: row.rExpectancy,
+        profitFactor: row.profitFactor,
+        sampleConfidence: row.sampleConfidence,
+      })),
+    [tagAnalytics],
+  );
 
   async function handleHeatmapMetricChange(metric: HeatmapMetric) {
     setHeatmapMetric(metric);
@@ -274,12 +432,13 @@ export function AnalyticsManager({
       <AnalyticsFilters
         accounts={accounts}
         strategies={strategies}
+        tags={tags}
         mistakes={mistakes}
         filters={filters}
         accountId={accountId}
         isLoading={isLoading}
         onChange={handleFiltersChange}
-        onApply={() => void loadAnalytics()}
+        onApply={() => void applyFilters()}
       />
 
       <div className="border-border flex flex-wrap gap-2 border-b pb-2">
@@ -287,7 +446,7 @@ export function AnalyticsManager({
           <button
             key={tab.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={cn(
               "rounded-lg px-3 py-2 text-sm transition-colors",
               activeTab === tab.id
@@ -302,7 +461,7 @@ export function AnalyticsManager({
 
       {activeTab === "overview" ? (
         <div className="space-y-6">
-          <DashboardSummaryCards summary={summary} />
+          <AnalyticsOverviewCards summary={summary} />
           <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
             <EquityCurveChart data={summary.equityCurve} />
             <DailyPerformanceCalendar
@@ -322,14 +481,28 @@ export function AnalyticsManager({
         <StrategyPerformanceTable rows={strategyRows} currency={currency} />
       ) : null}
 
+      {activeTab === "direction" ? (
+        <DirectionAnalyticsPanel
+          data={directionAnalytics}
+          currency={currency}
+        />
+      ) : null}
+
       {activeTab === "time" ? (
         <div className="space-y-6">
           <MetricsGroupsTable
             title="Trading sessions"
-            description="Performance grouped by Asia, London, New York, and off-hours in your profile timezone."
+            description="Asia, London, London/NY overlap, New York, and off-hours in your profile timezone."
             rows={timeAnalytics.sessions}
             currency={currency}
             nameHeader="Session"
+          />
+          <MetricsGroupsTable
+            title="2-hour windows"
+            description="Closed-trade stats grouped by 2-hour entry windows."
+            rows={timeAnalytics.twoHourWindows}
+            currency={currency}
+            nameHeader="Window"
           />
           <MetricsGroupsTable
             title="Hour of day"
@@ -387,8 +560,47 @@ export function AnalyticsManager({
             currency={currency}
             nameHeader="Emotion"
           />
+          <MetricsGroupsTable
+            title="Confidence score"
+            description="Performance grouped by pre-trade confidence buckets."
+            rows={psychology.confidence}
+            currency={currency}
+            nameHeader="Bucket"
+          />
+          <MetricsGroupsTable
+            title="Market bias"
+            description="Performance grouped by your pre-trade market bias."
+            rows={psychology.marketBias}
+            currency={currency}
+            nameHeader="Bias"
+          />
+          <MetricsGroupsTable
+            title="Bias alignment"
+            description="Whether trade direction matched your stated market bias."
+            rows={psychology.biasAlignment}
+            currency={currency}
+            nameHeader="Alignment"
+          />
           <PlanComplianceCard groups={planCompliance} currency={currency} />
         </div>
+      ) : null}
+
+      {activeTab === "setups" ? (
+        <MetricsGroupsTable
+          title="Entry criteria analytics"
+          description="Performance for trades tagged with each entry criterion."
+          rows={tagRows}
+          currency={currency}
+          nameHeader="Tag"
+        />
+      ) : null}
+
+      {activeTab === "planned-rr" ? (
+        <PlannedRrPanel data={plannedRrAnalytics} currency={currency} />
+      ) : null}
+
+      {activeTab === "behavior" ? (
+        <BehaviorAnalyticsPanel data={behaviorAnalytics} currency={currency} />
       ) : null}
 
       {activeTab === "mistakes" ? (
@@ -399,6 +611,14 @@ export function AnalyticsManager({
           currency={currency}
           nameHeader="Mistake"
         />
+      ) : null}
+
+      {activeTab === "execution" ? (
+        <ExecutionAnalyticsPanel data={executionAnalytics} />
+      ) : null}
+
+      {activeTab === "edge-finder" ? (
+        <EdgeFinderPanel data={edgeFinderAnalytics} currency={currency} />
       ) : null}
 
       {activeTab === "compare" ? (
@@ -413,6 +633,10 @@ export function AnalyticsManager({
               setCustomDates((current) => ({ ...current, [field]: value }))
             }
             onApply={() => void loadAnalytics()}
+          />
+          <ConcentrationPanel
+            data={concentrationAnalytics}
+            currency={currency}
           />
           <div className="grid gap-6 xl:grid-cols-2">
             <Card>

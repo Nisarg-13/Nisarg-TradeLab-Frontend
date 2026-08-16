@@ -12,10 +12,21 @@ import { TradeJournalCard } from "@/components/trades/trade-journal-card";
 import { TradeSummaryCard } from "@/components/trades/trade-summary-card";
 import { TradeTimeline } from "@/components/trades/trade-timeline";
 import { buttonVariants } from "@/components/ui/button";
+import type { Mistake, Strategy, Tag } from "@/types/strategy";
 import type { Trade } from "@/types/trade";
 import { cn } from "@/lib/utils";
 
-export function TradeDetailView({ initialTrade }: { initialTrade: Trade }) {
+export function TradeDetailView({
+  initialTrade,
+  strategies,
+  tags,
+  mistakes,
+}: {
+  initialTrade: Trade;
+  strategies: Strategy[];
+  tags: Tag[];
+  mistakes: Mistake[];
+}) {
   const router = useRouter();
   const [trade, setTrade] = useState(initialTrade);
 
@@ -55,7 +66,13 @@ export function TradeDetailView({ initialTrade }: { initialTrade: Trade }) {
 
       <TradeSummaryCard trade={trade} />
 
-      <TradeJournalCard trade={trade} onUpdated={handleUpdated} />
+      <TradeJournalCard
+        trade={trade}
+        strategies={strategies}
+        tags={tags}
+        mistakes={mistakes}
+        onUpdated={handleUpdated}
+      />
 
       <div className="grid gap-6 xl:grid-cols-2">
         <TradeExecutionsTable

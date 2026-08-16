@@ -67,6 +67,9 @@ export type TradeEvent = {
   metadata: unknown;
 };
 
+export type PlanComplianceStatus =
+  "FOLLOWED" | "PARTIALLY_FOLLOWED" | "DID_NOT_FOLLOW" | "NOT_REVIEWED";
+
 export type TradeReview = {
   id: string;
   tradeId: string;
@@ -76,7 +79,7 @@ export type TradeReview = {
   preTradeEmotion: TradeEmotion | null;
   postTradeEmotion: TradeEmotion | null;
   confidenceScore: number | null;
-  followedPlan: boolean | null;
+  planCompliance: PlanComplianceStatus | null;
   entryReason: string | null;
   whatWentWell: string | null;
   whatWentWrong: string | null;
@@ -93,7 +96,7 @@ export type TradeReviewInput = {
   preTradeEmotion?: TradeEmotion;
   postTradeEmotion?: TradeEmotion;
   confidenceScore?: number;
-  followedPlan?: boolean;
+  planCompliance?: PlanComplianceStatus;
   entryReason?: string;
   whatWentWell?: string;
   whatWentWrong?: string;
@@ -130,7 +133,7 @@ export type Trade = {
   fees: string;
   netPnl: string;
   realizedR: string | null;
-  strategy: TradeStrategySummary | null;
+  strategies: TradeStrategySummary[];
   tags: TradeTagSummary[];
   mistakes: TradeMistakeSummary[];
   executions: TradeExecution[];
@@ -153,7 +156,7 @@ export type CreateTradeInput = {
   initialRiskAmount?: number;
   initialRiskPercentage?: number;
   plannedRR?: number;
-  strategyId?: string;
+  strategyIds?: string[];
   tagIds?: string[];
   mistakeIds?: string[];
   review?: TradeReviewInput;
@@ -162,7 +165,7 @@ export type CreateTradeInput = {
 export type UpdateTradeInput = {
   currentStopLoss?: number | null;
   currentTakeProfit?: number | null;
-  strategyId?: string | null;
+  strategyIds?: string[];
   tagIds?: string[];
   mistakeIds?: string[];
   review?: TradeReviewInput;

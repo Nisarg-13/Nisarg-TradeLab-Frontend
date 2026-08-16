@@ -17,7 +17,9 @@ export function PlanComplianceCard({
   groups: PlanComplianceGroup[];
   currency: string;
 }) {
-  const reviewed = groups.filter((group) => group.followedPlan !== null);
+  const reviewed = groups.filter(
+    (group) => group.planCompliance !== "NOT_REVIEWED",
+  );
 
   return (
     <Card>
@@ -30,8 +32,8 @@ export function PlanComplianceCard({
       <CardContent className="overflow-x-auto">
         {reviewed.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            Mark trades with &quot;Followed plan&quot; in the journal to unlock
-            plan compliance analytics.
+            Mark trades with plan compliance in the journal to unlock plan
+            compliance analytics.
           </p>
         ) : (
           <table className="w-full min-w-[640px] text-sm">

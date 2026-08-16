@@ -20,11 +20,15 @@ import {
   createStrategy,
   createTag,
   deleteMistake,
+  deleteStrategy,
   deleteTag,
-  updateStrategy,
 } from "@/lib/api/strategies";
 import { useClientAuthToken } from "@/lib/auth/client";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
+
+function sortByName<T extends { name: string }>(items: T[]) {
+  return [...items].sort((left, right) => left.name.localeCompare(right.name));
+}
 
 export function StrategiesManager({
   initialStrategies,
@@ -50,11 +54,7 @@ export function StrategiesManager({
         description:
           String(formData.get("strategyDescription") ?? "") || undefined,
       });
-      setStrategies((current) =>
-        [...current, response.data].sort((left, right) =>
-          left.name.localeCompare(right.name),
-        ),
-      );
+      setStrategies((current) => sortByName([...current, response.data]));
       toast.success("Strategy created.");
     } catch (err) {
       toast.error(
@@ -65,19 +65,18 @@ export function StrategiesManager({
     }
   }
 
-  async function handleToggleStrategy(strategy: Strategy) {
+  async function handleDeleteStrategy(strategyId: string) {
     setIsSaving(true);
 
     try {
-      const response = await updateStrategy(getAuthToken, strategy.id, {
-        isActive: !strategy.isActive,
-      });
+      await deleteStrategy(getAuthToken, strategyId);
       setStrategies((current) =>
-        current.map((item) => (item.id === strategy.id ? response.data : item)),
+        current.filter((strategy) => strategy.id !== strategyId),
       );
+      toast.success("Strategy deleted.");
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to update strategy.",
+        err instanceof Error ? err.message : "Failed to delete strategy.",
       );
     } finally {
       setIsSaving(false);
@@ -91,14 +90,12 @@ export function StrategiesManager({
       const response = await createTag(getAuthToken, {
         name: String(formData.get("tagName") ?? ""),
       });
-      setTags((current) =>
-        [...current, response.data].sort((left, right) =>
-          left.name.localeCompare(right.name),
-        ),
-      );
-      toast.success("Tag created.");
+      setTags((current) => sortByName([...current, response.data]));
+      toast.success("Entry criteria created.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create tag.");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to create entry criteria.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -110,9 +107,11 @@ export function StrategiesManager({
     try {
       await deleteTag(getAuthToken, tagId);
       setTags((current) => current.filter((tag) => tag.id !== tagId));
-      toast.success("Tag deleted.");
+      toast.success("Entry criteria deleted.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete tag.");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete entry criteria.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -125,11 +124,7 @@ export function StrategiesManager({
       const response = await createMistake(getAuthToken, {
         name: String(formData.get("mistakeName") ?? ""),
       });
-      setMistakes((current) =>
-        [...current, response.data].sort((left, right) =>
-          left.name.localeCompare(right.name),
-        ),
-      );
+      setMistakes((current) => sortByName([...current, response.data]));
       toast.success("Mistake created.");
     } catch (err) {
       toast.error(
@@ -151,7 +146,7 @@ export function StrategiesManager({
       toast.success("Mistake deleted.");
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to create mistake.",
+        err instanceof Error ? err.message : "Failed to delete mistake.",
       );
     } finally {
       setIsSaving(false);
@@ -163,14 +158,14 @@ export function StrategiesManager({
       <PageHeader
         eyebrow="Journal"
         title="Strategies"
-        description="Manage strategies, tags, and mistakes for your trade journal."
+        description="Manage strategies, entry criteria, and mistakes for your trade journal."
       />
 
       <div className="grid gap-6 xl:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Strategies</CardTitle>
-            <CardDescription>Organize setups for your trades.</CardDescription>
+            <CardDescription>Name the strategies you trade.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form
@@ -197,7 +192,7 @@ export function StrategiesManager({
               {strategies.map((strategy) => (
                 <div
                   key={strategy.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
                 >
                   <div>
                     <p className="font-medium">{strategy.name}</p>
@@ -210,11 +205,11 @@ export function StrategiesManager({
                   <Button
                     type="button"
                     size="sm"
-                    variant={strategy.isActive ? "default" : "outline"}
+                    variant="outline"
                     disabled={isSaving}
-                    onClick={() => void handleToggleStrategy(strategy)}
+                    onClick={() => void handleDeleteStrategy(strategy.id)}
                   >
-                    {strategy.isActive ? "Active" : "Inactive"}
+                    Delete
                   </Button>
                 </div>
               ))}
@@ -224,8 +219,10 @@ export function StrategiesManager({
 
         <Card>
           <CardHeader>
-            <CardTitle>Tags</CardTitle>
-            <CardDescription>Label trades with quick tags.</CardDescription>
+            <CardTitle>Entry criteria</CardTitle>
+            <CardDescription>
+              Define what must be true before you enter a trade.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form
@@ -241,14 +238,14 @@ export function StrategiesManager({
                 <Input id="tagName" name="tagName" required />
               </div>
               <Button type="submit" disabled={isSaving}>
-                Add tag
+                Add entry criteria
               </Button>
             </form>
             <div className="space-y-2">
               {tags.map((tag) => (
                 <div
                   key={tag.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
                 >
                   <p className="font-medium">{tag.name}</p>
                   <Button
@@ -292,7 +289,7 @@ export function StrategiesManager({
               {mistakes.map((mistake) => (
                 <div
                   key={mistake.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
                 >
                   <p className="font-medium">{mistake.name}</p>
                   <Button

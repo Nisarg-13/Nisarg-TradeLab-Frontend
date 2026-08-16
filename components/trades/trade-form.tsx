@@ -21,11 +21,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { createTrade, updateTrade } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
 import { MARKET_BIAS_SELECT_OPTIONS } from "@/lib/constants/market-bias";
+import { PLAN_COMPLIANCE_OPTIONS } from "@/lib/constants/plan-compliance";
+import { formatPriceInput, parseOptionalPrice } from "@/lib/trades/price-input";
 import type { TradingAccount } from "@/types/account";
 import type { MarketBias } from "@/types/journal";
 import type { TradeDirection } from "@/types/risk";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
-import type { Trade, TradeEmotion } from "@/types/trade";
+import type { PlanComplianceStatus, Trade, TradeEmotion } from "@/types/trade";
 
 const DIRECTION_OPTIONS = [
   { value: "LONG", label: "Long" },
@@ -90,19 +92,6 @@ export function TradeForm({
     [accounts],
   );
 
-  const strategyOptions = useMemo(
-    () => [
-      { value: "", label: "No strategy" },
-      ...strategies
-        .filter((strategy) => strategy.isActive)
-        .map((strategy) => ({
-          value: strategy.id,
-          label: strategy.name,
-        })),
-    ],
-    [strategies],
-  );
-
   const [tradingAccountId, setTradingAccountId] = useState(
     trade?.tradingAccountId ??
       prefill?.tradingAccountId ??
@@ -120,10 +109,10 @@ export function TradeForm({
     trade?.initialVolume ?? prefill?.volume ?? "",
   );
   const [stopLoss, setStopLoss] = useState(
-    trade?.currentStopLoss ?? prefill?.stopLoss ?? "",
+    formatPriceInput(trade?.currentStopLoss ?? prefill?.stopLoss),
   );
   const [takeProfit, setTakeProfit] = useState(
-    trade?.currentTakeProfit ?? prefill?.takeProfit ?? "",
+    formatPriceInput(trade?.currentTakeProfit ?? prefill?.takeProfit),
   );
   const [accountBalanceAtEntry, setAccountBalanceAtEntry] = useState(
     trade?.accountBalanceAtEntry ?? prefill?.accountBalanceAtEntry ?? "",
@@ -137,7 +126,9 @@ export function TradeForm({
   const [plannedRR, setPlannedRR] = useState(
     trade?.plannedRR ?? prefill?.plannedRR ?? "",
   );
-  const [strategyId, setStrategyId] = useState(trade?.strategy?.id ?? "");
+  const [selectedStrategyIds, setSelectedStrategyIds] = useState<string[]>(
+    trade?.strategies.map((strategy) => strategy.id) ?? [],
+  );
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
     trade?.tags.map((tag) => tag.id) ?? [],
   );
@@ -166,19 +157,11 @@ export function TradeForm({
   const [whatWentWrong, setWhatWentWrong] = useState(
     trade?.review?.whatWentWrong ?? "",
   );
-  const [followedPlan, setFollowedPlan] = useState(
-    trade?.review?.followedPlan === null ||
-      trade?.review?.followedPlan === undefined
-      ? ""
-      : trade.review.followedPlan
-        ? "true"
-        : "false",
+  const [planCompliance, setPlanCompliance] = useState(
+    trade?.review?.planCompliance ?? "",
   );
-  const [entryReason, setEntryReason] = useState(
-    trade?.review?.entryReason ?? "",
-  );
-  const [notes, setNotes] = useState(trade?.review?.notes ?? "");
   const [lesson, setLesson] = useState(trade?.review?.lesson ?? "");
+  const isClosedTrade = trade?.status !== "OPEN";
 
   function toggleSelection(
     current: string[],
@@ -195,6 +178,21 @@ export function TradeForm({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
+    let parsedStopLoss: number | null | undefined;
+    let parsedTakeProfit: number | null | undefined;
+
+    try {
+      parsedStopLoss = parseOptionalPrice(stopLoss);
+      parsedTakeProfit = parseOptionalPrice(takeProfit);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Stop loss and take profit must be greater than zero.",
+      );
+      return;
+    }
+
     if (mode === "create") {
       if (!tradingAccountId || !symbol || !entryPrice || !volume) {
         toast.error("Account, symbol, entry price, and volume are required.");
@@ -210,8 +208,8 @@ export function TradeForm({
           direction,
           entryPrice: Number(entryPrice),
           volume: Number(volume),
-          stopLoss: stopLoss ? Number(stopLoss) : undefined,
-          takeProfit: takeProfit ? Number(takeProfit) : undefined,
+          stopLoss: parsedStopLoss ?? undefined,
+          takeProfit: parsedTakeProfit ?? undefined,
           accountBalanceAtEntry: accountBalanceAtEntry
             ? Number(accountBalanceAtEntry)
             : undefined,
@@ -222,7 +220,7 @@ export function TradeForm({
             ? Number(initialRiskPercentage)
             : undefined,
           plannedRR: plannedRR ? Number(plannedRR) : undefined,
-          strategyId: strategyId || undefined,
+          strategyIds: selectedStrategyIds,
           tagIds: selectedTagIds,
           mistakeIds: selectedMistakeIds,
           review: buildReviewPayload(),
@@ -248,9 +246,13 @@ export function TradeForm({
 
     try {
       const response = await updateTrade(getAuthToken, trade.id, {
-        currentStopLoss: stopLoss ? Number(stopLoss) : null,
-        currentTakeProfit: takeProfit ? Number(takeProfit) : null,
-        strategyId: strategyId || null,
+        ...(isClosedTrade
+          ? {}
+          : {
+              currentStopLoss: parsedStopLoss,
+              currentTakeProfit: parsedTakeProfit,
+            }),
+        strategyIds: selectedStrategyIds,
         tagIds: selectedTagIds,
         mistakeIds: selectedMistakeIds,
         review: buildReviewPayload(),
@@ -280,11 +282,11 @@ export function TradeForm({
         ? (postTradeEmotion as TradeEmotion)
         : undefined,
       confidenceScore,
-      followedPlan: followedPlan === "" ? undefined : followedPlan === "true",
-      entryReason: entryReason || undefined,
+      planCompliance: planCompliance
+        ? (planCompliance as PlanComplianceStatus)
+        : undefined,
       whatWentWell: whatWentWell || undefined,
       whatWentWrong: whatWentWrong || undefined,
-      notes: notes || undefined,
       lesson: lesson || undefined,
     };
 
@@ -294,11 +296,9 @@ export function TradeForm({
       postTradePlan ||
       preTradeEmotion ||
       postTradeEmotion ||
-      followedPlan !== "" ||
-      entryReason ||
+      planCompliance ||
       whatWentWell ||
       whatWentWrong ||
-      notes ||
       lesson ||
       trade?.review?.confidenceScore !== undefined ||
       confidenceScore !== 7,
@@ -393,6 +393,7 @@ export function TradeForm({
               min="0"
               step="any"
               value={stopLoss}
+              disabled={isClosedTrade}
               onChange={(event) => setStopLoss(event.target.value)}
             />
           </div>
@@ -404,9 +405,15 @@ export function TradeForm({
               min="0"
               step="any"
               value={takeProfit}
+              disabled={isClosedTrade}
               onChange={(event) => setTakeProfit(event.target.value)}
             />
           </div>
+          {isClosedTrade ? (
+            <p className="text-muted-foreground text-sm md:col-span-2">
+              Stop loss and take profit cannot be changed on closed trades.
+            </p>
+          ) : null}
 
           {mode === "create" ? (
             <>
@@ -462,14 +469,35 @@ export function TradeForm({
           ) : null}
 
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="trade-strategy">Strategy</Label>
-            <DropdownSelect
-              id="trade-strategy"
-              name="trade-strategy"
-              options={strategyOptions}
-              value={strategyId}
-              onValueChange={setStrategyId}
-            />
+            <Label>Strategies</Label>
+            <div className="flex flex-wrap gap-2">
+              {strategies.map((strategy) => (
+                <Button
+                  key={strategy.id}
+                  type="button"
+                  size="sm"
+                  variant={
+                    selectedStrategyIds.includes(strategy.id)
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
+                    toggleSelection(
+                      selectedStrategyIds,
+                      strategy.id,
+                      setSelectedStrategyIds,
+                    )
+                  }
+                >
+                  {strategy.name}
+                </Button>
+              ))}
+              {strategies.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  No strategies yet. Create strategies on the Strategies page.
+                </p>
+              ) : null}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -478,12 +506,12 @@ export function TradeForm({
         <CardHeader>
           <CardTitle>Psychology & journal</CardTitle>
           <CardDescription>
-            Tags, mistakes, emotions, and per-trade journal notes.
+            Entry criteria, mistakes, emotions, and per-trade journal fields.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Tags</Label>
+            <Label>Entry criteria</Label>
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => (
                 <Button
@@ -502,7 +530,8 @@ export function TradeForm({
               ))}
               {tags.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  No tags yet. Create tags on the Strategies page.
+                  No entry criteria yet. Create entry criteria on the Strategies
+                  page.
                 </p>
               ) : null}
             </div>
@@ -578,17 +607,16 @@ export function TradeForm({
               />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="followed-plan">Followed plan</Label>
+              <Label htmlFor="plan-compliance">Plan compliance</Label>
               <DropdownSelect
-                id="followed-plan"
-                name="followed-plan"
-                options={[
-                  { value: "", label: "Not set" },
-                  { value: "true", label: "Yes" },
-                  { value: "false", label: "No" },
-                ]}
-                value={followedPlan}
-                onValueChange={setFollowedPlan}
+                id="plan-compliance"
+                name="plan-compliance"
+                options={PLAN_COMPLIANCE_OPTIONS.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
+                value={planCompliance}
+                onValueChange={setPlanCompliance}
               />
             </div>
           </div>
@@ -633,22 +661,6 @@ export function TradeForm({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="entry-reason">Entry reason</Label>
-            <Textarea
-              id="entry-reason"
-              value={entryReason}
-              onChange={(event) => setEntryReason(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-            />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="lesson">Lesson</Label>
             <Textarea

@@ -7,18 +7,40 @@ export type AnalyticsQuery = {
   closedTo?: string;
   symbol?: string;
   strategyId?: string;
+  tagId?: string;
   direction?: "LONG" | "SHORT";
   mistakeId?: string;
   preTradeEmotion?: string;
   postTradeEmotion?: string;
   followedPlan?: "true" | "false";
+  planCompliance?:
+    "FOLLOWED" | "PARTIALLY_FOLLOWED" | "DID_NOT_FOLLOW" | "NOT_REVIEWED";
+  marketBias?: "BULLISH" | "BEARISH" | "NEUTRAL";
+  confidenceMin?: string;
+  confidenceMax?: string;
+  riskMin?: string;
+  riskMax?: string;
+  session?: "ASIA" | "LONDON" | "OVERLAP" | "NEW_YORK" | "OFF_HOURS";
   result?: "WIN" | "LOSS" | "BREAKEVEN";
 };
 
-export type HeatmapMetric = "pnl" | "averageR" | "winRate" | "tradeCount";
+export type HeatmapMetric =
+  "pnl" | "averageR" | "expectancy" | "winRate" | "tradeCount";
+
+export type PerformanceSortKey =
+  | "netPnl"
+  | "totalR"
+  | "averageR"
+  | "rExpectancy"
+  | "profitFactor"
+  | "winRate"
+  | "tradeCount";
 
 export type PeriodComparisonMode =
-  "LATEST_20_VS_PREVIOUS_20" | "THIS_MONTH_VS_LAST_MONTH" | "CUSTOM";
+  | "LATEST_20_VS_PREVIOUS_20"
+  | "FIRST_50_VS_LATEST_50"
+  | "THIS_MONTH_VS_LAST_MONTH"
+  | "CUSTOM";
 
 export type EquityCurvePoint = {
   date: string;
@@ -40,16 +62,31 @@ export type AnalyticsSummary = {
   closedTradeCount: number;
   openTradeCount: number;
   netPnl: string;
+  grossProfit: string;
+  grossLoss: string;
   returnPercentage: string | null;
+  winCount: number;
+  lossCount: number;
+  breakevenCount: number;
   winRate: string | null;
+  lossRate: string | null;
+  breakevenRate: string | null;
   profitFactor: string | null;
   moneyExpectancy: string | null;
   rExpectancy: string | null;
+  totalR: string | null;
   averageR: string | null;
   averageWinner: string | null;
   averageLoser: string | null;
+  averageWinLossRatio: string | null;
   largestWinner: string | null;
   largestLoser: string | null;
+  averageHoldingTimeMinutes: string | null;
+  medianHoldingTimeMinutes: string | null;
+  totalCommission: string;
+  totalSwap: string;
+  totalFees: string;
+  totalTradingCosts: string;
   maxDrawdownAmount: string;
   maxDrawdownPercentage: string;
   currentDrawdownAmount: string;
@@ -66,30 +103,91 @@ export type AnalyticsSummary = {
   calendar: CalendarDay[];
 };
 
-export type InstrumentPerformance = {
-  symbol: string;
+export type GroupedPerformanceMetrics = {
   tradeCount: number;
   netPnl: string;
+  grossProfit: string;
+  grossLoss: string;
+  totalR: string | null;
   winRate: string | null;
   averageR: string | null;
+  rExpectancy: string | null;
+  moneyExpectancy: string | null;
+  profitFactor: string | null;
+  longTradeCount: number;
+  shortTradeCount: number;
+  longNetPnl: string;
+  shortNetPnl: string;
+  sampleConfidence: SampleConfidence;
+};
+
+export type InstrumentPerformance = GroupedPerformanceMetrics & {
+  symbol: string;
+};
+
+export type StrategyPerformance = GroupedPerformanceMetrics & {
+  strategyId: string | null;
+  strategyName: string;
+};
+
+export type DirectionSideMetrics = {
+  direction: "LONG" | "SHORT";
+  label: string;
+  tradeCount: number;
+  netPnl: string;
+  totalR: string | null;
+  winRate: string | null;
+  averageR: string | null;
+  rExpectancy: string | null;
   profitFactor: string | null;
   sampleConfidence: SampleConfidence;
 };
 
-export type StrategyPerformance = {
-  strategyId: string | null;
-  strategyName: string;
+export type DirectionAnalytics = {
+  overall: DirectionSideMetrics[];
+  byInstrument: Array<{
+    symbol: string;
+    long: DirectionSideMetrics | null;
+    short: DirectionSideMetrics | null;
+  }>;
+};
+
+export type AfterLossesComparison = {
+  lossStreakThreshold: number;
   tradeCount: number;
   netPnl: string;
   winRate: string | null;
   averageR: string | null;
-  profitFactor: string | null;
+  rExpectancy: string | null;
+  sampleConfidence: SampleConfidence;
+  baselineTradeCount: number;
+  baselineWinRate: string | null;
+  baselineNetPnl: string;
+};
+
+export type EarlyWinnerExitAnalytics = {
+  winnerCount: number;
+  earlyExitCount: number;
+  earlyExitRate: string | null;
+  averagePlannedR: string | null;
+  averageRealizedR: string | null;
+  averageCaptureRatio: string | null;
   sampleConfidence: SampleConfidence;
 };
+
+export type BehaviorAnalytics = {
+  afterLossBuckets: TradeMetricsGroup[];
+  afterWinBuckets: TradeMetricsGroup[];
+  afterLossesComparison: AfterLossesComparison;
+  earlyWinnerExit: EarlyWinnerExitAnalytics;
+};
+
+export type PlanComplianceStatus =
+  "FOLLOWED" | "PARTIALLY_FOLLOWED" | "DID_NOT_FOLLOW" | "NOT_REVIEWED";
 
 export type PlanComplianceGroup = {
   label: string;
-  followedPlan: boolean | null;
+  planCompliance: PlanComplianceStatus;
   tradeCount: number;
   netPnl: string;
   winRate: string | null;
@@ -98,6 +196,33 @@ export type PlanComplianceGroup = {
   rExpectancy: string | null;
   profitFactor: string | null;
   sampleConfidence: SampleConfidence;
+};
+
+export type TagAnalyticsGroup = {
+  tagId: string;
+  tagName: string;
+  tradeCount: number;
+  netPnl: string;
+  totalR: string | null;
+  averageR: string | null;
+  winRate: string | null;
+  moneyExpectancy: string | null;
+  rExpectancy: string | null;
+  profitFactor: string | null;
+  sampleConfidence: SampleConfidence;
+};
+
+export type PlannedRrSummary = {
+  tradeCount: number;
+  averagePlannedR: string | null;
+  averageRealizedR: string | null;
+  averageRealizedWinnerR: string | null;
+  targetAchievementRate: string | null;
+};
+
+export type PlannedRrAnalytics = {
+  buckets: TradeMetricsGroup[];
+  summary: PlannedRrSummary;
 };
 
 export type RiskStatGroup = {
@@ -119,7 +244,7 @@ export type TradeMetricsGroup = {
   label: string;
   tradeCount: number;
   netPnl: string;
-  totalR: string;
+  totalR: string | null;
   winRate: string | null;
   averageR: string | null;
   moneyExpectancy: string | null;
@@ -130,6 +255,7 @@ export type TradeMetricsGroup = {
 
 export type TimeAnalytics = {
   hours: TradeMetricsGroup[];
+  twoHourWindows: TradeMetricsGroup[];
   daysOfWeek: TradeMetricsGroup[];
   months: TradeMetricsGroup[];
   sessions: TradeMetricsGroup[];
@@ -153,6 +279,9 @@ export type HeatmapData = {
 export type PsychologyAnalytics = {
   preTradeEmotions: TradeMetricsGroup[];
   postTradeEmotions: TradeMetricsGroup[];
+  confidence: TradeMetricsGroup[];
+  marketBias: TradeMetricsGroup[];
+  biasAlignment: TradeMetricsGroup[];
 };
 
 export type MistakeAnalyticsGroup = {
@@ -160,7 +289,7 @@ export type MistakeAnalyticsGroup = {
   mistakeName: string;
   tradeCount: number;
   netPnl: string;
-  totalR: string;
+  totalR: string | null;
   averageR: string | null;
   winRate: string | null;
   moneyExpectancy: string | null;
@@ -188,6 +317,7 @@ export type PeriodMetrics = {
   label: string;
   tradeCount: number;
   netPnl: string;
+  totalR: string | null;
   winRate: string | null;
   averageR: string | null;
   moneyExpectancy: string | null;
@@ -196,6 +326,9 @@ export type PeriodMetrics = {
   maxDrawdownPercentage: string;
   mistakeRate: string | null;
   planComplianceRate: string | null;
+  averageRiskPercentage: string | null;
+  averageHoldingTimeMinutes: string | null;
+  totalTradingCosts: string;
   sampleConfidence: SampleConfidence;
 };
 
@@ -205,6 +338,7 @@ export type PeriodComparison = {
   periodB: PeriodMetrics;
   deltas: {
     netPnl: string | null;
+    totalR: string | null;
     winRate: string | null;
     averageR: string | null;
     moneyExpectancy: string | null;
@@ -213,7 +347,76 @@ export type PeriodComparison = {
     planComplianceRate: string | null;
     maxDrawdownAmount: string | null;
     maxDrawdownPercentage: string | null;
+    averageRiskPercentage: string | null;
+    averageHoldingTimeMinutes: string | null;
+    totalTradingCosts: string | null;
   };
+};
+
+export type ConcentrationAnalytics = {
+  profit: {
+    winnerCount: number;
+    grossProfit: string;
+    top1Percent: string | null;
+    top3Percent: string | null;
+    top5Percent: string | null;
+    top10Percent: string | null;
+    netPnlExcludingTop1: string;
+    netPnlExcludingTop3: string;
+    netPnlExcludingTop5: string;
+  };
+  loss: {
+    loserCount: number;
+    grossLoss: string;
+    worst1Percent: string | null;
+    worst3Percent: string | null;
+    worst5Percent: string | null;
+    worst10Percent: string | null;
+  };
+};
+
+export type ExecutionAnalytics = {
+  tradeCount: number;
+  averageEntryPrice: string | null;
+  averageExitPrice: string | null;
+  entryCount: number;
+  exitCount: number;
+  partialExitCount: number;
+  averageHoldTimeMinutes: string | null;
+  plannedVsRealized: PlannedRrSummary;
+  slModificationCount: number;
+  tpModificationCount: number;
+  movedToBreakevenCount: number;
+  widenedSlCount: number;
+  reducedRiskCount: number;
+  increasedRiskCount: number;
+  mfeAvailableCount: number;
+  averageExitEfficiency: string | null;
+};
+
+export type EdgeFinderDimension = {
+  key: string;
+  label: string;
+  value: string;
+};
+
+export type EdgeFinderCombination = {
+  dimensions: EdgeFinderDimension[];
+  tradeCount: number;
+  netPnl: string;
+  totalR: string | null;
+  winRate: string | null;
+  averageR: string | null;
+  rExpectancy: string | null;
+  profitFactor: string | null;
+  sampleConfidence: SampleConfidence;
+};
+
+export type EdgeFinderAnalytics = {
+  minimumSampleSize: number;
+  evaluatedCombinationCount: number;
+  strongest: EdgeFinderCombination[];
+  weakest: EdgeFinderCombination[];
 };
 
 export type ApiDataResponse<T> = {

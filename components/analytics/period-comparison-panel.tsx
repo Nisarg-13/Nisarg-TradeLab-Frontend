@@ -18,6 +18,7 @@ import type { PeriodComparison, PeriodComparisonMode } from "@/types/analytics";
 
 const MODE_OPTIONS = [
   { value: "LATEST_20_VS_PREVIOUS_20", label: "Latest 20 vs previous 20" },
+  { value: "FIRST_50_VS_LATEST_50", label: "First 50 vs latest 50" },
   { value: "THIS_MONTH_VS_LAST_MONTH", label: "This month vs last month" },
   { value: "CUSTOM", label: "Custom periods" },
 ];
@@ -161,6 +162,13 @@ export function PeriodComparisonPanel({
                 delta={comparison.deltas.netPnl}
               />
               <MetricRow
+                label="Total R"
+                periodA={comparison.periodA.totalR ?? "—"}
+                periodB={comparison.periodB.totalR ?? "—"}
+                delta={comparison.deltas.totalR}
+                suffix="R"
+              />
+              <MetricRow
                 label="Win rate"
                 periodA={comparison.periodA.winRate ?? "—"}
                 periodB={comparison.periodB.winRate ?? "—"}
@@ -207,6 +215,32 @@ export function PeriodComparisonPanel({
                 periodB={comparison.periodB.planComplianceRate ?? "—"}
                 delta={comparison.deltas.planComplianceRate}
                 suffix="%"
+              />
+              <MetricRow
+                label="Avg risk %"
+                periodA={comparison.periodA.averageRiskPercentage ?? "—"}
+                periodB={comparison.periodB.averageRiskPercentage ?? "—"}
+                delta={comparison.deltas.averageRiskPercentage}
+                suffix="%"
+              />
+              <MetricRow
+                label="Avg hold time"
+                periodA={comparison.periodA.averageHoldingTimeMinutes ?? "—"}
+                periodB={comparison.periodB.averageHoldingTimeMinutes ?? "—"}
+                delta={comparison.deltas.averageHoldingTimeMinutes}
+                suffix=" min"
+              />
+              <MetricRow
+                label="Trading costs"
+                periodA={formatMoney(
+                  comparison.periodA.totalTradingCosts,
+                  currency,
+                )}
+                periodB={formatMoney(
+                  comparison.periodB.totalTradingCosts,
+                  currency,
+                )}
+                delta={comparison.deltas.totalTradingCosts}
               />
               <MetricRow
                 label="Max drawdown"

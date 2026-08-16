@@ -36,7 +36,15 @@ export type CreateTagInput = {
   name: string;
 };
 
+export type UpdateTagInput = {
+  name: string;
+};
+
 export type CreateMistakeInput = {
+  name: string;
+};
+
+export type UpdateMistakeInput = {
   name: string;
 };
 

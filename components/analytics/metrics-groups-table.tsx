@@ -59,7 +59,9 @@ export function MetricsGroupsTable({
                   >
                     {formatMoney(row.netPnl, currency)}
                   </td>
-                  <td className="tabular-data py-3">{row.totalR}R</td>
+                  <td className="tabular-data py-3">
+                    {row.totalR ? `${row.totalR}R` : "—"}
+                  </td>
                   <td className="tabular-data py-3">
                     {row.winRate ? `${row.winRate}%` : "—"}
                   </td>

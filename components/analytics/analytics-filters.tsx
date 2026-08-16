@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AnalyticsQuery } from "@/types/analytics";
 import type { TradingAccount } from "@/types/account";
-import type { Mistake, Strategy } from "@/types/strategy";
+import type { Mistake, Strategy, Tag } from "@/types/strategy";
 
 const DIRECTION_OPTIONS = [
   { value: "", label: "All directions" },
@@ -28,10 +28,22 @@ const RESULT_OPTIONS = [
   { value: "BREAKEVEN", label: "Breakeven" },
 ];
 
-const FOLLOWED_PLAN_OPTIONS = [
-  { value: "", label: "Any plan status" },
-  { value: "true", label: "Followed plan" },
-  { value: "false", label: "Did not follow plan" },
+import { PLAN_COMPLIANCE_OPTIONS } from "@/lib/constants/plan-compliance";
+
+const MARKET_BIAS_OPTIONS = [
+  { value: "", label: "Any market bias" },
+  { value: "BULLISH", label: "Bullish" },
+  { value: "BEARISH", label: "Bearish" },
+  { value: "NEUTRAL", label: "Neutral" },
+];
+
+const SESSION_OPTIONS = [
+  { value: "", label: "Any session" },
+  { value: "ASIA", label: "Asia" },
+  { value: "LONDON", label: "London" },
+  { value: "OVERLAP", label: "London / NY overlap" },
+  { value: "NEW_YORK", label: "New York" },
+  { value: "OFF_HOURS", label: "Off hours" },
 ];
 
 const EMOTION_OPTIONS = [
@@ -54,6 +66,7 @@ const EMOTION_OPTIONS = [
 export function AnalyticsFilters({
   accounts,
   strategies,
+  tags,
   mistakes,
   filters,
   accountId = "",
@@ -63,6 +76,7 @@ export function AnalyticsFilters({
 }: {
   accounts: TradingAccount[];
   strategies: Strategy[];
+  tags: Tag[];
   mistakes: Mistake[];
   filters: AnalyticsQuery;
   accountId?: string;
@@ -83,6 +97,14 @@ export function AnalyticsFilters({
     ...strategies.map((strategy) => ({
       value: strategy.id,
       label: strategy.name,
+    })),
+  ];
+
+  const tagOptions = [
+    { value: "", label: "All entry criteria" },
+    ...tags.map((tag) => ({
+      value: tag.id,
+      label: tag.name,
     })),
   ];
 
@@ -110,8 +132,8 @@ export function AnalyticsFilters({
         <div>
           <CardTitle>Global filters</CardTitle>
           <CardDescription>
-            Filter every analytics view by account, date range, setup, and
-            psychology fields.
+            Filter every analytics view by account, date range, entry criteria,
+            and psychology fields. Filters persist in the URL.
           </CardDescription>
         </div>
         <Button type="button" disabled={isLoading} onClick={onApply}>
@@ -167,6 +189,16 @@ export function AnalyticsFilters({
           />
         </div>
         <div className="space-y-2">
+          <Label htmlFor="analytics-tag">Entry criteria</Label>
+          <DropdownSelect
+            id="analytics-tag"
+            name="analytics-tag"
+            options={tagOptions}
+            value={filters.tagId ?? ""}
+            onValueChange={(value) => updateField("tagId", value)}
+          />
+        </div>
+        <div className="space-y-2">
           <Label htmlFor="analytics-direction">Direction</Label>
           <DropdownSelect
             id="analytics-direction"
@@ -187,6 +219,84 @@ export function AnalyticsFilters({
             value={filters.result ?? ""}
             onValueChange={(value) =>
               updateField("result", value as AnalyticsQuery["result"])
+            }
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="analytics-session">Trading session</Label>
+          <DropdownSelect
+            id="analytics-session"
+            name="analytics-session"
+            options={SESSION_OPTIONS}
+            value={filters.session ?? ""}
+            onValueChange={(value) =>
+              updateField("session", value as AnalyticsQuery["session"])
+            }
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="analytics-risk-min">Risk % min</Label>
+          <Input
+            id="analytics-risk-min"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0.25"
+            value={filters.riskMin ?? ""}
+            onChange={(event) => updateField("riskMin", event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="analytics-risk-max">Risk % max</Label>
+          <Input
+            id="analytics-risk-max"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="1.00"
+            value={filters.riskMax ?? ""}
+            onChange={(event) => updateField("riskMax", event.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="analytics-confidence-min">Confidence min</Label>
+          <Input
+            id="analytics-confidence-min"
+            type="number"
+            min="1"
+            max="10"
+            step="1"
+            placeholder="1"
+            value={filters.confidenceMin ?? ""}
+            onChange={(event) =>
+              updateField("confidenceMin", event.target.value)
+            }
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="analytics-confidence-max">Confidence max</Label>
+          <Input
+            id="analytics-confidence-max"
+            type="number"
+            min="1"
+            max="10"
+            step="1"
+            placeholder="10"
+            value={filters.confidenceMax ?? ""}
+            onChange={(event) =>
+              updateField("confidenceMax", event.target.value)
+            }
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="analytics-market-bias">Market bias</Label>
+          <DropdownSelect
+            id="analytics-market-bias"
+            name="analytics-market-bias"
+            options={MARKET_BIAS_OPTIONS}
+            value={filters.marketBias ?? ""}
+            onValueChange={(value) =>
+              updateField("marketBias", value as AnalyticsQuery["marketBias"])
             }
           />
         </div>
@@ -221,16 +331,21 @@ export function AnalyticsFilters({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="analytics-followed-plan">Plan compliance</Label>
+          <Label htmlFor="analytics-plan-compliance">Plan compliance</Label>
           <DropdownSelect
-            id="analytics-followed-plan"
-            name="analytics-followed-plan"
-            options={FOLLOWED_PLAN_OPTIONS}
-            value={filters.followedPlan ?? ""}
+            id="analytics-plan-compliance"
+            name="analytics-plan-compliance"
+            options={[
+              { value: "", label: "Any plan status" },
+              ...PLAN_COMPLIANCE_OPTIONS.filter(
+                (option) => option.value !== "",
+              ),
+            ]}
+            value={filters.planCompliance ?? ""}
             onValueChange={(value) =>
               updateField(
-                "followedPlan",
-                value as AnalyticsQuery["followedPlan"],
+                "planCompliance",
+                value as AnalyticsQuery["planCompliance"],
               )
             }
           />

@@ -1,4 +1,5 @@
 import { DashboardManager } from "@/components/dashboard/dashboard-manager";
+import { EMPTY_ANALYTICS_SUMMARY } from "@/lib/analytics/empty-summary";
 import { listAccounts } from "@/lib/api/accounts";
 import {
   getAnalyticsSummary,
@@ -14,38 +15,6 @@ import type {
   StrategyPerformance,
 } from "@/types/analytics";
 import type { Trade } from "@/types/trade";
-
-const EMPTY_SUMMARY: AnalyticsSummary = {
-  currency: "USD",
-  tradeCount: 0,
-  closedTradeCount: 0,
-  openTradeCount: 0,
-  netPnl: "0.00",
-  returnPercentage: null,
-  winRate: null,
-  profitFactor: null,
-  moneyExpectancy: null,
-  rExpectancy: null,
-  averageR: null,
-  averageWinner: null,
-  averageLoser: null,
-  largestWinner: null,
-  largestLoser: null,
-  maxDrawdownAmount: "0.00",
-  maxDrawdownPercentage: "0.00",
-  currentDrawdownAmount: "0.00",
-  currentDrawdownPercentage: "0.00",
-  longestWinningStreak: 0,
-  longestLosingStreak: 0,
-  currentWinningStreak: 0,
-  currentLosingStreak: 0,
-  startingBalance: "0.00",
-  currentBalance: "0.00",
-  currentOpenRisk: "0.00",
-  sampleConfidence: "INSUFFICIENT",
-  equityCurve: [],
-  calendar: [],
-};
 
 async function loadAnalytics(accountId?: string) {
   const query = accountId ? { tradingAccountId: accountId } : {};
@@ -66,7 +35,7 @@ async function loadAnalytics(accountId?: string) {
 
 export default async function DashboardPage() {
   let accounts: TradingAccount[] = [];
-  let summary: AnalyticsSummary = EMPTY_SUMMARY;
+  let summary: AnalyticsSummary = EMPTY_ANALYTICS_SUMMARY;
   let instruments: InstrumentPerformance[] = [];
   let strategies: StrategyPerformance[] = [];
   let recentTrades: Trade[] = [];
@@ -87,7 +56,7 @@ export default async function DashboardPage() {
     instruments = analytics.instruments;
     strategies = analytics.strategies;
   } catch {
-    summary = EMPTY_SUMMARY;
+    summary = EMPTY_ANALYTICS_SUMMARY;
     instruments = [];
     strategies = [];
   }

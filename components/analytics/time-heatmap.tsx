@@ -17,6 +17,7 @@ const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const METRIC_OPTIONS = [
   { value: "pnl", label: "PnL" },
   { value: "averageR", label: "Average R" },
+  { value: "expectancy", label: "Expectancy" },
   { value: "winRate", label: "Win rate" },
   { value: "tradeCount", label: "Trade count" },
 ];

@@ -126,8 +126,11 @@ export function TradeSummaryCard({ trade }: { trade: Trade }) {
             trade.realizedR ? `${Number(trade.realizedR).toFixed(2)}R` : "—"
           }
         />
-        {trade.strategy ? (
-          <DetailItem label="Strategy" value={trade.strategy.name} />
+        {trade.strategies.length > 0 ? (
+          <DetailItem
+            label="Strategies"
+            value={trade.strategies.map((strategy) => strategy.name).join(", ")}
+          />
         ) : null}
       </CardContent>
     </Card>

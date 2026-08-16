@@ -1,20 +1,39 @@
+import { Suspense } from "react";
+
 import { AnalyticsManager } from "@/components/analytics/analytics-manager";
+import { EMPTY_ANALYTICS_SUMMARY } from "@/lib/analytics/empty-summary";
+import {
+  EMPTY_BEHAVIOR_ANALYTICS,
+  EMPTY_CONCENTRATION_ANALYTICS,
+  EMPTY_DIRECTION_ANALYTICS,
+  EMPTY_EDGE_FINDER_ANALYTICS,
+  EMPTY_EXECUTION_ANALYTICS,
+  EMPTY_PLANNED_RR_ANALYTICS,
+  EMPTY_TAG_ANALYTICS,
+} from "@/lib/analytics/empty-analytics";
 import { listAccounts } from "@/lib/api/accounts";
 import {
   getAnalyticsSummary,
+  getBehaviorAnalytics,
+  getConcentrationAnalytics,
+  getDirectionAnalytics,
   getDurationAnalytics,
+  getEdgeFinderAnalytics,
+  getExecutionAnalytics,
   getHeatmapAnalytics,
   getInstrumentPerformance,
   getMistakeAnalytics,
   getPeriodComparison,
+  getPlannedRrAnalytics,
   getPlanCompliance,
   getPsychologyAnalytics,
   getRiskStats,
   getRollingPerformance,
   getStrategyPerformance,
+  getTagAnalytics,
   getTimeAnalytics,
 } from "@/lib/api/analytics";
-import { listMistakes, listStrategies } from "@/lib/api/strategies";
+import { listMistakes, listStrategies, listTags } from "@/lib/api/strategies";
 import { getServerAuthToken } from "@/lib/auth/server";
 import type { TradingAccount } from "@/types/account";
 import type {
@@ -32,42 +51,11 @@ import type {
   TimeAnalytics,
   TradeMetricsGroup,
 } from "@/types/analytics";
-import type { Mistake, Strategy } from "@/types/strategy";
-
-const EMPTY_SUMMARY: AnalyticsSummary = {
-  currency: "USD",
-  tradeCount: 0,
-  closedTradeCount: 0,
-  openTradeCount: 0,
-  netPnl: "0.00",
-  returnPercentage: null,
-  winRate: null,
-  profitFactor: null,
-  moneyExpectancy: null,
-  rExpectancy: null,
-  averageR: null,
-  averageWinner: null,
-  averageLoser: null,
-  largestWinner: null,
-  largestLoser: null,
-  maxDrawdownAmount: "0.00",
-  maxDrawdownPercentage: "0.00",
-  currentDrawdownAmount: "0.00",
-  currentDrawdownPercentage: "0.00",
-  longestWinningStreak: 0,
-  longestLosingStreak: 0,
-  currentWinningStreak: 0,
-  currentLosingStreak: 0,
-  startingBalance: "0.00",
-  currentBalance: "0.00",
-  currentOpenRisk: "0.00",
-  sampleConfidence: "INSUFFICIENT",
-  equityCurve: [],
-  calendar: [],
-};
+import type { Mistake, Strategy, Tag } from "@/types/strategy";
 
 const EMPTY_TIME: TimeAnalytics = {
   hours: [],
+  twoHourWindows: [],
   daysOfWeek: [],
   months: [],
   sessions: [],
@@ -76,6 +64,9 @@ const EMPTY_TIME: TimeAnalytics = {
 const EMPTY_PSYCHOLOGY: PsychologyAnalytics = {
   preTradeEmotions: [],
   postTradeEmotions: [],
+  confidence: [],
+  marketBias: [],
+  biasAlignment: [],
 };
 
 const EMPTY_ROLLING: RollingPerformance = {
@@ -85,7 +76,7 @@ const EMPTY_ROLLING: RollingPerformance = {
     label: "Current window",
     tradeCount: 0,
     netPnl: "0.00",
-    totalR: "0.00",
+    totalR: null,
     winRate: null,
     averageR: null,
     moneyExpectancy: null,
@@ -98,7 +89,7 @@ const EMPTY_ROLLING: RollingPerformance = {
     label: "Previous window",
     tradeCount: 0,
     netPnl: "0.00",
-    totalR: "0.00",
+    totalR: null,
     winRate: null,
     averageR: null,
     moneyExpectancy: null,
@@ -115,6 +106,7 @@ const EMPTY_COMPARISON: PeriodComparison = {
     label: "Latest 20 trades",
     tradeCount: 0,
     netPnl: "0.00",
+    totalR: null,
     winRate: null,
     averageR: null,
     moneyExpectancy: null,
@@ -123,12 +115,16 @@ const EMPTY_COMPARISON: PeriodComparison = {
     maxDrawdownPercentage: "0.00",
     mistakeRate: null,
     planComplianceRate: null,
+    averageRiskPercentage: null,
+    averageHoldingTimeMinutes: null,
+    totalTradingCosts: "0.00",
     sampleConfidence: "INSUFFICIENT",
   },
   periodB: {
     label: "Previous 20 trades",
     tradeCount: 0,
     netPnl: "0.00",
+    totalR: null,
     winRate: null,
     averageR: null,
     moneyExpectancy: null,
@@ -137,10 +133,14 @@ const EMPTY_COMPARISON: PeriodComparison = {
     maxDrawdownPercentage: "0.00",
     mistakeRate: null,
     planComplianceRate: null,
+    averageRiskPercentage: null,
+    averageHoldingTimeMinutes: null,
+    totalTradingCosts: "0.00",
     sampleConfidence: "INSUFFICIENT",
   },
   deltas: {
     netPnl: null,
+    totalR: null,
     winRate: null,
     averageR: null,
     moneyExpectancy: null,
@@ -149,14 +149,18 @@ const EMPTY_COMPARISON: PeriodComparison = {
     planComplianceRate: null,
     maxDrawdownAmount: null,
     maxDrawdownPercentage: null,
+    averageRiskPercentage: null,
+    averageHoldingTimeMinutes: null,
+    totalTradingCosts: null,
   },
 };
 
 export default async function AnalyticsOverviewPage() {
   let accounts: TradingAccount[] = [];
   let strategies: Strategy[] = [];
+  let tags: Tag[] = [];
   let mistakes: Mistake[] = [];
-  let summary: AnalyticsSummary = EMPTY_SUMMARY;
+  let summary: AnalyticsSummary = EMPTY_ANALYTICS_SUMMARY;
   let instruments: InstrumentPerformance[] = [];
   let strategyRows: StrategyPerformance[] = [];
   let planCompliance: PlanComplianceGroup[] = [];
@@ -169,6 +173,13 @@ export default async function AnalyticsOverviewPage() {
   let durationAnalytics: TradeMetricsGroup[] = [];
   let rolling: RollingPerformance = EMPTY_ROLLING;
   let comparison: PeriodComparison = EMPTY_COMPARISON;
+  let directionAnalytics = EMPTY_DIRECTION_ANALYTICS;
+  let behaviorAnalytics = EMPTY_BEHAVIOR_ANALYTICS;
+  let tagAnalytics = EMPTY_TAG_ANALYTICS;
+  let plannedRrAnalytics = EMPTY_PLANNED_RR_ANALYTICS;
+  let concentrationAnalytics = EMPTY_CONCENTRATION_ANALYTICS;
+  let executionAnalytics = EMPTY_EXECUTION_ANALYTICS;
+  let edgeFinderAnalytics = EMPTY_EDGE_FINDER_ANALYTICS;
 
   try {
     const accountsResponse = await listAccounts(getServerAuthToken);
@@ -178,15 +189,19 @@ export default async function AnalyticsOverviewPage() {
   }
 
   try {
-    const [strategiesResponse, mistakesResponse] = await Promise.all([
-      listStrategies(getServerAuthToken),
-      listMistakes(getServerAuthToken),
-    ]);
+    const [strategiesResponse, mistakesResponse, tagsResponse] =
+      await Promise.all([
+        listStrategies(getServerAuthToken),
+        listMistakes(getServerAuthToken),
+        listTags(getServerAuthToken),
+      ]);
     strategies = strategiesResponse.data;
     mistakes = mistakesResponse.data;
+    tags = tagsResponse.data;
   } catch {
     strategies = [];
     mistakes = [];
+    tags = [];
   }
 
   const query =
@@ -206,6 +221,13 @@ export default async function AnalyticsOverviewPage() {
       durationResponse,
       rollingResponse,
       comparisonResponse,
+      directionResponse,
+      behaviorResponse,
+      tagsResponse,
+      plannedRrResponse,
+      concentrationResponse,
+      executionResponse,
+      edgeFinderResponse,
     ] = await Promise.all([
       getAnalyticsSummary(getServerAuthToken, query),
       getInstrumentPerformance(getServerAuthToken, query),
@@ -219,6 +241,13 @@ export default async function AnalyticsOverviewPage() {
       getDurationAnalytics(getServerAuthToken, query),
       getRollingPerformance(getServerAuthToken, query),
       getPeriodComparison(getServerAuthToken, query),
+      getDirectionAnalytics(getServerAuthToken, query),
+      getBehaviorAnalytics(getServerAuthToken, query),
+      getTagAnalytics(getServerAuthToken, query),
+      getPlannedRrAnalytics(getServerAuthToken, query),
+      getConcentrationAnalytics(getServerAuthToken, query),
+      getExecutionAnalytics(getServerAuthToken, query),
+      getEdgeFinderAnalytics(getServerAuthToken, query),
     ]);
 
     summary = summaryResponse.data;
@@ -233,8 +262,15 @@ export default async function AnalyticsOverviewPage() {
     durationAnalytics = durationResponse.data;
     rolling = rollingResponse.data;
     comparison = comparisonResponse.data;
+    directionAnalytics = directionResponse.data;
+    behaviorAnalytics = behaviorResponse.data;
+    tagAnalytics = tagsResponse.data;
+    plannedRrAnalytics = plannedRrResponse.data;
+    concentrationAnalytics = concentrationResponse.data;
+    executionAnalytics = executionResponse.data;
+    edgeFinderAnalytics = edgeFinderResponse.data;
   } catch {
-    summary = EMPTY_SUMMARY;
+    summary = EMPTY_ANALYTICS_SUMMARY;
     instruments = [];
     strategyRows = [];
     planCompliance = [];
@@ -246,26 +282,47 @@ export default async function AnalyticsOverviewPage() {
     durationAnalytics = [];
     rolling = EMPTY_ROLLING;
     comparison = EMPTY_COMPARISON;
+    directionAnalytics = EMPTY_DIRECTION_ANALYTICS;
+    behaviorAnalytics = EMPTY_BEHAVIOR_ANALYTICS;
+    tagAnalytics = EMPTY_TAG_ANALYTICS;
+    plannedRrAnalytics = EMPTY_PLANNED_RR_ANALYTICS;
+    concentrationAnalytics = EMPTY_CONCENTRATION_ANALYTICS;
+    executionAnalytics = EMPTY_EXECUTION_ANALYTICS;
+    edgeFinderAnalytics = EMPTY_EDGE_FINDER_ANALYTICS;
   }
 
   return (
-    <AnalyticsManager
-      accounts={accounts}
-      strategies={strategies}
-      mistakes={mistakes}
-      initialSummary={summary}
-      initialInstruments={instruments}
-      initialStrategies={strategyRows}
-      initialPlanCompliance={planCompliance}
-      initialRiskStats={riskStats}
-      initialTime={timeAnalytics}
-      initialHeatmapMetric={heatmapMetric}
-      initialHeatmap={heatmapCells}
-      initialPsychology={psychology}
-      initialMistakeAnalytics={mistakeAnalytics}
-      initialDuration={durationAnalytics}
-      initialRolling={rolling}
-      initialComparison={comparison}
-    />
+    <Suspense
+      fallback={
+        <div className="text-muted-foreground p-6">Loading analytics...</div>
+      }
+    >
+      <AnalyticsManager
+        accounts={accounts}
+        strategies={strategies}
+        tags={tags}
+        mistakes={mistakes}
+        initialSummary={summary}
+        initialInstruments={instruments}
+        initialStrategies={strategyRows}
+        initialPlanCompliance={planCompliance}
+        initialRiskStats={riskStats}
+        initialTime={timeAnalytics}
+        initialHeatmapMetric={heatmapMetric}
+        initialHeatmap={heatmapCells}
+        initialPsychology={psychology}
+        initialMistakeAnalytics={mistakeAnalytics}
+        initialDuration={durationAnalytics}
+        initialRolling={rolling}
+        initialComparison={comparison}
+        initialDirection={directionAnalytics}
+        initialBehavior={behaviorAnalytics}
+        initialTagAnalytics={tagAnalytics}
+        initialPlannedRr={plannedRrAnalytics}
+        initialConcentration={concentrationAnalytics}
+        initialExecution={executionAnalytics}
+        initialEdgeFinder={edgeFinderAnalytics}
+      />
+    </Suspense>
   );
 }

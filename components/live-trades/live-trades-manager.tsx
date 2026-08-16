@@ -123,6 +123,16 @@ export function LiveTradesManager({
     [accounts],
   );
 
+  const filteredConnections = useMemo(
+    () =>
+      accountId
+        ? data.connections.filter(
+            (connection) => connection.tradingAccountId === accountId,
+          )
+        : data.connections,
+    [accountId, data.connections],
+  );
+
   const filteredPositions: LiveTradePosition[] = useMemo(
     () =>
       accountId
@@ -198,7 +208,7 @@ export function LiveTradesManager({
 
       <ConnectionStatusCard
         liveStatus={data.liveStatus}
-        connections={data.connections}
+        connections={filteredConnections}
       />
 
       {isRefreshing ? (

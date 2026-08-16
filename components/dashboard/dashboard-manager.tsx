@@ -2,7 +2,7 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -43,14 +43,14 @@ export function DashboardManager({
   initialSummary,
   initialInstruments,
   initialStrategies,
-  recentTrades,
+  initialRecentTrades,
   openTrades,
 }: {
   accounts: TradingAccount[];
   initialSummary: AnalyticsSummary;
   initialInstruments: InstrumentPerformance[];
   initialStrategies: StrategyPerformance[];
-  recentTrades: Trade[];
+  initialRecentTrades: Trade[];
   openTrades: Trade[];
 }) {
   const router = useRouter();
@@ -66,6 +66,7 @@ export function DashboardManager({
   const [instruments, setInstruments] = useState(initialInstruments);
   const [strategies, setStrategies] = useState(initialStrategies);
   const [positions, setPositions] = useState(openTrades);
+  const [recentTrades, setRecentTrades] = useState(initialRecentTrades);
   const [isLoading, setIsLoading] = useState(false);
 
   const accountOptions = [
@@ -76,7 +77,7 @@ export function DashboardManager({
     })),
   ];
 
-  async function handleApplyFilter() {
+  const handleApplyFilter = useCallback(async () => {
     setIsLoading(true);
 
     try {
@@ -86,6 +87,7 @@ export function DashboardManager({
         instrumentsResponse,
         strategiesResponse,
         openTradesResponse,
+        recentTradesResponse,
       ] = await Promise.all([
         getAnalyticsSummary(getAuthToken, query),
         getInstrumentPerformance(getAuthToken, query),
@@ -96,12 +98,18 @@ export function DashboardManager({
           sort: "openedAt_desc",
           ...query,
         }),
+        listTrades(getAuthToken, {
+          limit: 5,
+          sort: "openedAt_desc",
+          ...query,
+        }),
       ]);
 
       setSummary(summaryResponse.data);
       setInstruments(instrumentsResponse.data);
       setStrategies(strategiesResponse.data);
       setPositions(openTradesResponse.data);
+      setRecentTrades(recentTradesResponse.data);
       router.refresh();
     } catch (err) {
       toast.error(
@@ -110,7 +118,7 @@ export function DashboardManager({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [accountId, getAuthToken, router]);
 
   useInitialPersistedAccountLoad(
     isReady,

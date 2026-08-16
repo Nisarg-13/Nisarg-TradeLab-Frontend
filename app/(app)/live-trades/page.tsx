@@ -3,6 +3,10 @@ import { LiveTradesManager } from "@/components/live-trades/live-trades-manager"
 import { listAccounts } from "@/lib/api/accounts";
 import { getLiveTrades } from "@/lib/api/live-trades";
 import { getServerAuthToken } from "@/lib/auth/server";
+import {
+  buildTradingAccountQuery,
+  getServerSelectedAccountId,
+} from "@/lib/preferences/server-selected-account";
 import type { TradingAccount } from "@/types/account";
 import type { LiveTradesResponse } from "@/types/live-trades";
 
@@ -23,10 +27,16 @@ export default async function LiveTradesPage() {
     accounts = [];
   }
 
+  const selectedAccountId = await getServerSelectedAccountId(
+    getServerAuthToken,
+    accounts,
+  );
+
   try {
-    const liveTradesResponse = await getLiveTrades(getServerAuthToken, {
-      tradingAccountId: accounts.length === 1 ? accounts[0].id : undefined,
-    });
+    const liveTradesResponse = await getLiveTrades(
+      getServerAuthToken,
+      buildTradingAccountQuery(selectedAccountId),
+    );
     liveTrades = liveTradesResponse.data;
   } catch {
     liveTrades = EMPTY_LIVE_TRADES;

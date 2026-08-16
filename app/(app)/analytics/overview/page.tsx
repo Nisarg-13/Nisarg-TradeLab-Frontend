@@ -35,6 +35,10 @@ import {
 } from "@/lib/api/analytics";
 import { listMistakes, listStrategies, listTags } from "@/lib/api/strategies";
 import { getServerAuthToken } from "@/lib/auth/server";
+import {
+  buildTradingAccountQuery,
+  getServerSelectedAccountId,
+} from "@/lib/preferences/server-selected-account";
 import type { TradingAccount } from "@/types/account";
 import type {
   AnalyticsSummary,
@@ -204,8 +208,11 @@ export default async function AnalyticsOverviewPage() {
     tags = [];
   }
 
-  const query =
-    accounts.length === 1 ? { tradingAccountId: accounts[0].id } : {};
+  const selectedAccountId = await getServerSelectedAccountId(
+    getServerAuthToken,
+    accounts,
+  );
+  const query = buildTradingAccountQuery(selectedAccountId);
 
   try {
     const [

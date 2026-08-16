@@ -8,6 +8,10 @@ import {
 } from "@/lib/api/analytics";
 import { listTrades } from "@/lib/api/trades";
 import { getServerAuthToken } from "@/lib/auth/server";
+import {
+  buildTradingAccountQuery,
+  getServerSelectedAccountId,
+} from "@/lib/preferences/server-selected-account";
 import type { TradingAccount } from "@/types/account";
 import type {
   AnalyticsSummary,
@@ -17,7 +21,7 @@ import type {
 import type { Trade } from "@/types/trade";
 
 async function loadAnalytics(accountId?: string) {
-  const query = accountId ? { tradingAccountId: accountId } : {};
+  const query = buildTradingAccountQuery(accountId);
 
   const [summaryResponse, instrumentsResponse, strategiesResponse] =
     await Promise.all([
@@ -48,10 +52,13 @@ export default async function DashboardPage() {
     accounts = [];
   }
 
+  const selectedAccountId = await getServerSelectedAccountId(
+    getServerAuthToken,
+    accounts,
+  );
+
   try {
-    const analytics = await loadAnalytics(
-      accounts.length === 1 ? accounts[0].id : undefined,
-    );
+    const analytics = await loadAnalytics(selectedAccountId);
     summary = analytics.summary;
     instruments = analytics.instruments;
     strategies = analytics.strategies;
@@ -62,15 +69,18 @@ export default async function DashboardPage() {
   }
 
   try {
+    const query = buildTradingAccountQuery(selectedAccountId);
     const [tradesResponse, openTradesResponse] = await Promise.all([
       listTrades(getServerAuthToken, {
         limit: 5,
         sort: "openedAt_desc",
+        ...query,
       }),
       listTrades(getServerAuthToken, {
         status: "OPEN",
         limit: 5,
         sort: "openedAt_desc",
+        ...query,
       }),
     ]);
     recentTrades = tradesResponse.data;
@@ -86,7 +96,7 @@ export default async function DashboardPage() {
       initialSummary={summary}
       initialInstruments={instruments}
       initialStrategies={strategies}
-      recentTrades={recentTrades}
+      initialRecentTrades={recentTrades}
       openTrades={openTrades}
     />
   );

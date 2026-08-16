@@ -2,6 +2,10 @@ import { TradesManager } from "@/components/trades/trades-manager";
 import { listAccounts } from "@/lib/api/accounts";
 import { listTrades } from "@/lib/api/trades";
 import { getServerAuthToken } from "@/lib/auth/server";
+import {
+  buildTradingAccountQuery,
+  getServerSelectedAccountId,
+} from "@/lib/preferences/server-selected-account";
 import type { TradingAccount } from "@/types/account";
 import type { Trade } from "@/types/trade";
 
@@ -11,16 +15,27 @@ export default async function TradesPage() {
   let accounts: TradingAccount[] = [];
 
   try {
-    const [tradesResponse, accountsResponse] = await Promise.all([
-      listTrades(getServerAuthToken, { sort: "openedAt_desc", limit: 10 }),
-      listAccounts(getServerAuthToken),
-    ]);
-    trades = tradesResponse.data;
-    meta = tradesResponse.meta;
+    const accountsResponse = await listAccounts(getServerAuthToken);
     accounts = accountsResponse.data;
   } catch {
-    trades = [];
     accounts = [];
+  }
+
+  const selectedAccountId = await getServerSelectedAccountId(
+    getServerAuthToken,
+    accounts,
+  );
+
+  try {
+    const tradesResponse = await listTrades(getServerAuthToken, {
+      sort: "openedAt_desc",
+      limit: 10,
+      ...buildTradingAccountQuery(selectedAccountId),
+    });
+    trades = tradesResponse.data;
+    meta = tradesResponse.meta;
+  } catch {
+    trades = [];
   }
 
   return (

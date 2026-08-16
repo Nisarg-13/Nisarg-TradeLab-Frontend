@@ -100,9 +100,19 @@ export function AiCoachManager({
     [accounts],
   );
 
+  const filteredAnalyses = useMemo(
+    () =>
+      selectedAccountId
+        ? analyses.filter(
+            (analysis) => analysis.tradingAccountId === selectedAccountId,
+          )
+        : analyses,
+    [analyses, selectedAccountId],
+  );
+
   const selectedAnalysis =
-    analyses.find((analysis) => analysis.id === selectedAnalysisId) ??
-    analyses[0] ??
+    filteredAnalyses.find((analysis) => analysis.id === selectedAnalysisId) ??
+    filteredAnalyses[0] ??
     null;
 
   async function handleGenerateAnalysis() {
@@ -183,7 +193,10 @@ export function AiCoachManager({
               id="coach-account"
               name="coach-account"
               value={selectedAccountId}
-              onValueChange={setSelectedAccountId}
+              onValueChange={(value) => {
+                setSelectedAccountId(value);
+                setSelectedAnalysisId("");
+              }}
               options={accountOptions}
             />
           </div>
@@ -214,17 +227,18 @@ export function AiCoachManager({
             <CardHeader>
               <CardTitle>Analysis History</CardTitle>
               <CardDescription>
-                {analyses.length} saved report
-                {analyses.length === 1 ? "" : "s"}
+                {filteredAnalyses.length} saved report
+                {filteredAnalyses.length === 1 ? "" : "s"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {analyses.length === 0 ? (
+              {filteredAnalyses.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  No analyses yet. Run your first coaching report.
+                  No analyses yet for this account. Run your first coaching
+                  report.
                 </p>
               ) : (
-                analyses.map((analysis) => (
+                filteredAnalyses.map((analysis) => (
                   <button
                     key={analysis.id}
                     type="button"
@@ -386,10 +400,10 @@ export function AiCoachManager({
               <CardDescription>Saved coaching analyses</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {analyses.length === 0 ? (
+              {filteredAnalyses.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No reports yet.</p>
               ) : (
-                analyses.map((analysis) => (
+                filteredAnalyses.map((analysis) => (
                   <div
                     key={analysis.id}
                     className="rounded-lg border px-4 py-3"

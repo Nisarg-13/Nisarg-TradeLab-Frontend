@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { JournalFields } from "@/components/journal/journal-fields";
@@ -23,6 +23,10 @@ import {
   updateDailyJournalEntry,
 } from "@/lib/api/journal";
 import { useClientAuthToken } from "@/lib/auth/client";
+import {
+  useInitialPersistedAccountLoad,
+  usePersistedAccountId,
+} from "@/lib/hooks/use-persisted-account-id";
 import type { TradingAccount } from "@/types/account";
 import type {
   DailyJournal,
@@ -75,16 +79,17 @@ export function DailyJournalManager({
   initialEntries: DailyJournal[];
 }) {
   const getAuthToken = useClientAuthToken();
+  const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
+  const selectedAccountId = accountId || accounts[0]?.id || "";
   const [entries, setEntries] = useState(initialEntries);
-  const [selectedAccountId, setSelectedAccountId] = useState(
-    accounts[0]?.id ?? "",
-  );
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(
     initialEntries[0]?.id ?? null,
   );
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [draftAccountId, setDraftAccountId] = useState(accounts[0]?.id ?? "");
+  const [draftAccountId, setDraftAccountId] = useState(
+    selectedAccountId || accounts[0]?.id || "",
+  );
   const [draftDate, setDraftDate] = useState(todayIsoDate());
   const [journalValues, setJournalValues] = useState<JournalFieldValues>(() =>
     toJournalValues(initialEntries[0]),
@@ -101,10 +106,39 @@ export function DailyJournalManager({
 
   const filteredEntries = useMemo(
     () =>
-      entries.filter((entry) =>
-        selectedAccountId ? entry.tradingAccountId === selectedAccountId : true,
-      ),
+      entries.filter((entry) => entry.tradingAccountId === selectedAccountId),
     [entries, selectedAccountId],
+  );
+
+  const refreshEntries = useCallback(
+    async (accountFilterId?: string) => {
+      const response = await listDailyJournalEntries(getAuthToken, {
+        tradingAccountId: accountFilterId,
+      });
+      setEntries(response.data);
+      return response.data;
+    },
+    [getAuthToken],
+  );
+
+  const handleAccountChange = useCallback(
+    async (value: string) => {
+      setAccountId(value);
+      const accountFilterId = value || accounts[0]?.id;
+      const refreshed = await refreshEntries(accountFilterId);
+      setSelectedEntryId(refreshed[0]?.id ?? null);
+      setIsCreating(false);
+    },
+    [accounts, refreshEntries, setAccountId],
+  );
+
+  useInitialPersistedAccountLoad(
+    isReady,
+    async () => {
+      const refreshed = await refreshEntries(accountId);
+      setSelectedEntryId(refreshed[0]?.id ?? null);
+    },
+    Boolean(accountId),
   );
 
   const selectedEntry =
@@ -124,14 +158,6 @@ export function DailyJournalManager({
     setDraftAccountId(entry.tradingAccountId);
     setDraftDate(entry.date);
     setJournalValues(toJournalValues(entry));
-  }
-
-  async function refreshEntries(accountId?: string) {
-    const response = await listDailyJournalEntries(getAuthToken, {
-      tradingAccountId: accountId,
-    });
-    setEntries(response.data);
-    return response.data;
   }
 
   async function handleSave() {
@@ -211,8 +237,7 @@ export function DailyJournalManager({
                 name="journal-account-filter"
                 value={selectedAccountId}
                 onValueChange={(value) => {
-                  setSelectedAccountId(value);
-                  void refreshEntries(value).catch(() => undefined);
+                  void handleAccountChange(value).catch(() => undefined);
                 }}
                 options={accountOptions}
               />

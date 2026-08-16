@@ -2,6 +2,7 @@ import { DailyJournalManager } from "@/components/daily-journal/daily-journal-ma
 import { listAccounts } from "@/lib/api/accounts";
 import { listDailyJournalEntries } from "@/lib/api/journal";
 import { getServerAuthToken } from "@/lib/auth/server";
+import { getServerSelectedAccountId } from "@/lib/preferences/server-selected-account";
 import type { TradingAccount } from "@/types/account";
 import type { DailyJournal } from "@/types/journal";
 
@@ -16,9 +17,13 @@ export default async function DailyJournalPage() {
     accounts = [];
   }
 
+  const selectedAccountId =
+    (await getServerSelectedAccountId(getServerAuthToken, accounts)) ??
+    accounts[0]?.id;
+
   try {
     const entriesResponse = await listDailyJournalEntries(getServerAuthToken, {
-      tradingAccountId: accounts[0]?.id,
+      tradingAccountId: selectedAccountId,
     });
     entries = entriesResponse.data;
   } catch {

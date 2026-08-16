@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { TradeDirectionBadge } from "@/components/trades/trade-direction-badge";
 import { TradeStatusBadge } from "@/components/trades/trade-status-badge";
 import { FormattedDateTime } from "@/components/formatting/formatted-datetime";
 import { formatMoney } from "@/lib/formatting/currency";
@@ -42,9 +43,8 @@ export function TradeSummaryCard({ trade }: { trade: Trade }) {
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
-          <CardTitle>
-            {trade.symbol} · {trade.direction}
-          </CardTitle>
+          <CardTitle>{trade.symbol}</CardTitle>
+          <TradeDirectionBadge direction={trade.direction} />
           <TradeStatusBadge status={trade.status} />
         </div>
         <CardDescription>
@@ -52,6 +52,10 @@ export function TradeSummaryCard({ trade }: { trade: Trade }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <DetailItem
+          label="Side"
+          value={<TradeDirectionBadge direction={trade.direction} />}
+        />
         <DetailItem
           label="Opened"
           value={<FormattedDateTime value={trade.openedAt} />}

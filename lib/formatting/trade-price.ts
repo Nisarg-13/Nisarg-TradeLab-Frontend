@@ -11,7 +11,7 @@ export function formatTradePrice(value: string | null | undefined): string {
 
   const numeric = Number(normalized);
 
-  if (!Number.isFinite(numeric)) {
+  if (!Number.isFinite(numeric) || numeric <= 0) {
     return "—";
   }
 

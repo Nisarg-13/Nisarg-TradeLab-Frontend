@@ -1,3 +1,4 @@
+import type { ChartTimeframe } from "@/lib/constants/chart-timeframes";
 import type { AssetClass } from "./instrument";
 import type { MarketBias } from "./journal";
 import type { TradeDirection } from "./risk";
@@ -111,6 +112,7 @@ export type Trade = {
   source: TradeSource;
   symbol: string;
   assetClass: AssetClass;
+  chartTimeframe: ChartTimeframe | null;
   direction: TradeDirection;
   status: TradeStatus;
   openedAt: string;
@@ -165,6 +167,7 @@ export type CreateTradeInput = {
 export type UpdateTradeInput = {
   currentStopLoss?: number | null;
   currentTakeProfit?: number | null;
+  chartTimeframe?: ChartTimeframe | null;
   strategyIds?: string[];
   tagIds?: string[];
   mistakeIds?: string[];

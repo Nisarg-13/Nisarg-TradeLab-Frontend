@@ -2,6 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
 import type { Metadata } from "next";
 import { Geist, JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppToaster } from "@/components/ui/sonner";
@@ -35,13 +36,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          suppressHydrationWarning
+      <body className="flex min-h-full flex-col">
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: themeInitScript }}
         />
-      </head>
-      <body className="flex min-h-full flex-col">
         <ThemeProvider>
           <ClerkProvider appearance={{ theme: shadcn }} afterSignOutUrl="/">
             {children}

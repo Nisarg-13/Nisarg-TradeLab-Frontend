@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/card";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Label } from "@/components/ui/label";
+import { CHART_TIMEFRAME_OPTIONS } from "@/lib/constants/chart-timeframes";
+import type { ChartTimeframe } from "@/lib/constants/chart-timeframes";
 import { updateTrade } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
 import { PLAN_COMPLIANCE_OPTIONS } from "@/lib/constants/plan-compliance";
@@ -96,12 +98,18 @@ export function TradeJournalCard({
   const [selectedMistakeIds, setSelectedMistakeIds] = useState(() =>
     trade.mistakes.map((mistake) => mistake.id),
   );
+  const [chartTimeframe, setChartTimeframe] = useState(
+    trade.chartTimeframe ?? "",
+  );
 
   async function handleSave() {
     setIsSaving(true);
 
     try {
       const response = await updateTrade(getAuthToken, trade.id, {
+        chartTimeframe: chartTimeframe
+          ? (chartTimeframe as ChartTimeframe)
+          : null,
         strategyIds: selectedStrategyIds,
         tagIds: selectedTagIds,
         mistakeIds: selectedMistakeIds,
@@ -140,6 +148,27 @@ export function TradeJournalCard({
         </Button>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="chart-timeframe">Chart timeframe</Label>
+          <DropdownSelect
+            id="chart-timeframe"
+            name="chart-timeframe"
+            value={chartTimeframe}
+            onValueChange={setChartTimeframe}
+            options={[
+              { value: "", label: "Not set" },
+              ...CHART_TIMEFRAME_OPTIONS.map((option) => ({
+                value: option.value,
+                label: option.label,
+              })),
+            ]}
+          />
+          <p className="text-muted-foreground text-xs">
+            The timeframe you analyzed before taking this trade. Used in
+            Insights analytics.
+          </p>
+        </div>
+
         <div className="space-y-2">
           <Label>Strategies</Label>
           <div className="flex flex-wrap gap-2">

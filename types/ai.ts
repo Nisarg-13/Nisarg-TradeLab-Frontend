@@ -12,6 +12,8 @@ export type AiAnalysis = {
   recommendations: string[];
   rulesForNextTrades: string[];
   dataLimitations: string[];
+  source: "openai" | "gemini" | "analytics";
+  fallbackReason: string | null;
   createdAt: string;
 };
 

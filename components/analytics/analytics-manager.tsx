@@ -9,6 +9,7 @@ import { AnalyticsOverviewCards } from "@/components/analytics/analytics-overvie
 import { ConcentrationPanel } from "@/components/analytics/concentration-panel";
 import { EdgeFinderPanel } from "@/components/analytics/edge-finder-panel";
 import { ExecutionAnalyticsPanel } from "@/components/analytics/execution-analytics-panel";
+import { InsightsAnalyticsPanel } from "@/components/analytics/insights-analytics-panel";
 import { BehaviorAnalyticsPanel } from "@/components/analytics/behavior-analytics-panel";
 import { DirectionAnalyticsPanel } from "@/components/analytics/direction-analytics-panel";
 import { PlannedRrPanel } from "@/components/analytics/planned-rr-panel";
@@ -40,6 +41,7 @@ import {
   getEdgeFinderAnalytics,
   getExecutionAnalytics,
   getHeatmapAnalytics,
+  getInsightsAnalytics,
   getInstrumentPerformance,
   getMistakeAnalytics,
   getPeriodComparison,
@@ -87,6 +89,7 @@ import type {
   TimeAnalytics,
   TradeMetricsGroup,
   HeatmapCell,
+  InsightsAnalytics,
 } from "@/types/analytics";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
 
@@ -96,6 +99,7 @@ const TABS = [
   { id: "strategies", label: "Strategies" },
   { id: "direction", label: "Long / Short" },
   { id: "time", label: "Time" },
+  { id: "insights", label: "Insights" },
   { id: "risk", label: "Risk" },
   { id: "psychology", label: "Psychology" },
   { id: "setups", label: "Entry criteria" },
@@ -134,6 +138,7 @@ export function AnalyticsManager({
   initialConcentration,
   initialExecution,
   initialEdgeFinder,
+  initialInsights,
 }: {
   accounts: TradingAccount[];
   strategies: Strategy[];
@@ -159,6 +164,7 @@ export function AnalyticsManager({
   initialConcentration: ConcentrationAnalytics;
   initialExecution: ExecutionAnalytics;
   initialEdgeFinder: EdgeFinderAnalytics;
+  initialInsights: InsightsAnalytics;
 }) {
   const getAuthToken = useClientAuthToken();
   const router = useRouter();
@@ -206,6 +212,7 @@ export function AnalyticsManager({
     useState(initialExecution);
   const [edgeFinderAnalytics, setEdgeFinderAnalytics] =
     useState(initialEdgeFinder);
+  const [insightsAnalytics, setInsightsAnalytics] = useState(initialInsights);
   const [comparisonMode, setComparisonMode] = useState<PeriodComparisonMode>(
     initialComparison.mode,
   );
@@ -274,6 +281,7 @@ export function AnalyticsManager({
           concentrationResponse,
           executionResponse,
           edgeFinderResponse,
+          insightsResponse,
         ] = await Promise.all([
           getAnalyticsSummary(getAuthToken, query),
           getInstrumentPerformance(getAuthToken, query),
@@ -299,6 +307,7 @@ export function AnalyticsManager({
           getConcentrationAnalytics(getAuthToken, query),
           getExecutionAnalytics(getAuthToken, query),
           getEdgeFinderAnalytics(getAuthToken, query),
+          getInsightsAnalytics(getAuthToken, query),
         ]);
 
         setSummary(summaryResponse.data);
@@ -320,6 +329,7 @@ export function AnalyticsManager({
         setConcentrationAnalytics(concentrationResponse.data);
         setExecutionAnalytics(executionResponse.data);
         setEdgeFinderAnalytics(edgeFinderResponse.data);
+        setInsightsAnalytics(insightsResponse.data);
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -538,6 +548,10 @@ export function AnalyticsManager({
             onMetricChange={(metric) => void handleHeatmapMetricChange(metric)}
           />
         </div>
+      ) : null}
+
+      {activeTab === "insights" ? (
+        <InsightsAnalyticsPanel data={insightsAnalytics} currency={currency} />
       ) : null}
 
       {activeTab === "risk" ? (

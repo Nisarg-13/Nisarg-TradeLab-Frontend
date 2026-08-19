@@ -10,6 +10,7 @@ import type {
   EdgeFinderAnalytics,
   HeatmapData,
   HeatmapMetric,
+  InsightsAnalytics,
   InstrumentPerformance,
   MistakeAnalyticsGroup,
   PeriodComparison,
@@ -241,6 +242,16 @@ export async function getPeriodComparison(
       periodBFrom: custom?.periodBFrom,
       periodBTo: custom?.periodBTo,
     })}`,
+    { getAuthToken },
+  );
+}
+
+export async function getInsightsAnalytics(
+  getAuthToken: () => Promise<string | null>,
+  query: AnalyticsQuery = {},
+) {
+  return apiRequest<ApiDataResponse<InsightsAnalytics>>(
+    `/api/v1/analytics/insights${buildQuery(query)}`,
     { getAuthToken },
   );
 }

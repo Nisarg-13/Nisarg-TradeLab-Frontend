@@ -1,8 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  BarChart3,
+  Bot,
+  Lightbulb,
+  Shield,
+  Sparkles,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 import { toast } from "sonner";
 
+import { AiCoachGeneratingOverlay } from "@/components/ai-coach/ai-coach-generating-overlay";
+import { FormattedDateTime } from "@/components/formatting/formatted-datetime";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,21 +61,54 @@ function confidenceTone(confidence: SampleConfidence) {
   }
 }
 
-function BulletSection({ title, items }: { title: string; items: string[] }) {
+function BulletSection({
+  title,
+  description,
+  items,
+  icon: Icon,
+  tone = "default",
+}: {
+  title: string;
+  description?: string;
+  items: string[];
+  icon?: typeof TrendingUp;
+  tone?: "default" | "positive" | "negative" | "warning" | "accent";
+}) {
   if (items.length === 0) return null;
 
+  const toneClass =
+    tone === "positive"
+      ? "border-emerald-500/20 bg-emerald-500/5"
+      : tone === "negative"
+        ? "border-red-500/20 bg-red-500/5"
+        : tone === "warning"
+          ? "border-amber-500/20 bg-amber-500/5"
+          : tone === "accent"
+            ? "border-primary/20 bg-primary/5"
+            : "border-border bg-card/40";
+
   return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold tracking-wide uppercase">{title}</h3>
-      <ul className="text-muted-foreground space-y-2 text-sm">
-        {items.map((item) => (
-          <li key={item} className="flex gap-2">
-            <span className="text-primary mt-1">•</span>
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Card className={toneClass}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          {Icon ? <Icon className="text-primary size-4" /> : null}
+          <CardTitle className="text-base">{title}</CardTitle>
+        </div>
+        {description ? <CardDescription>{description}</CardDescription> : null}
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-3 text-sm">
+          {items.map((item) => (
+            <li key={item} className="flex gap-3">
+              <span className="bg-primary/80 mt-2 size-1.5 shrink-0 rounded-full" />
+              <span className="text-muted-foreground leading-relaxed">
+                {item}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -166,16 +211,29 @@ export function AiCoachManager({
 
   return (
     <div className="space-y-6">
+      {isGenerating ? <AiCoachGeneratingOverlay /> : null}
+
       <PageHeader
         title="AI Coach"
-        description="Review structured coaching insights and ask questions about your journal data."
+        description="Personalized coaching to maximize profits, minimize losses, and improve your trading process."
       >
         <Button
           type="button"
           disabled={isGenerating}
           onClick={handleGenerateAnalysis}
+          className="min-w-36"
         >
-          {isGenerating ? "Generating..." : "Run analysis"}
+          {isGenerating ? (
+            <span className="inline-flex items-center gap-2">
+              <Sparkles className="size-4 animate-pulse" />
+              Analyzing...
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2">
+              <Bot className="size-4" />
+              Run analysis
+            </span>
+          )}
         </Button>
       </PageHeader>
 
@@ -222,95 +280,101 @@ export function AiCoachManager({
       </div>
 
       {tab === "analysis" ? (
-        <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>Analysis History</CardTitle>
-              <CardDescription>
-                {filteredAnalyses.length} saved report
-                {filteredAnalyses.length === 1 ? "" : "s"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {filteredAnalyses.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  No analyses yet for this account. Run your first coaching
-                  report.
-                </p>
-              ) : (
-                filteredAnalyses.map((analysis) => (
-                  <button
-                    key={analysis.id}
-                    type="button"
-                    onClick={() => setSelectedAnalysisId(analysis.id)}
-                    className={cn(
-                      "w-full rounded-lg border px-4 py-3 text-left transition-colors",
-                      selectedAnalysis?.id === analysis.id
-                        ? "border-primary bg-primary/5"
-                        : "hover:bg-muted/50",
-                    )}
-                  >
-                    <p className="font-medium">
-                      {new Date(analysis.createdAt).toLocaleString()}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                      {analysis.sampleSize} trades · {analysis.sampleConfidence}
-                    </p>
-                  </button>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
+        <div className="space-y-6">
           {selectedAnalysis ? (
-            <Card>
-              <CardHeader className="gap-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <CardTitle>Performance Analysis</CardTitle>
-                  <Badge
-                    className={confidenceTone(
-                      selectedAnalysis.sampleConfidence,
-                    )}
-                  >
-                    {selectedAnalysis.sampleConfidence} confidence
-                  </Badge>
-                  <Badge variant="outline">
-                    {selectedAnalysis.sampleSize} closed trades
-                  </Badge>
-                </div>
-                <CardDescription>{selectedAnalysis.summary}</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-6 md:grid-cols-2">
+            <>
+              <Card className="border-primary/20 from-primary/10 bg-gradient-to-br to-transparent">
+                <CardHeader className="gap-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <BarChart3 className="text-primary size-5" />
+                      Executive summary
+                    </CardTitle>
+                    <Badge
+                      className={confidenceTone(
+                        selectedAnalysis.sampleConfidence,
+                      )}
+                    >
+                      {selectedAnalysis.sampleConfidence} confidence
+                    </Badge>
+                    <Badge variant="outline">
+                      {selectedAnalysis.sampleSize} closed trades
+                    </Badge>
+                    <Badge
+                      variant={
+                        selectedAnalysis.source === "openai" ||
+                        selectedAnalysis.source === "gemini"
+                          ? "default"
+                          : "outline"
+                      }
+                    >
+                      {selectedAnalysis.source === "openai"
+                        ? "OpenAI report"
+                        : selectedAnalysis.source === "gemini"
+                          ? "Gemini report"
+                          : "Analytics-based report"}
+                    </Badge>
+                  </div>
+                  <CardDescription className="text-foreground/90 text-base leading-relaxed">
+                    {selectedAnalysis.summary}
+                  </CardDescription>
+                  {selectedAnalysis.fallbackReason ? (
+                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                      OpenAI was not used for this report:{" "}
+                      {selectedAnalysis.fallbackReason}
+                    </p>
+                  ) : null}
+                </CardHeader>
+              </Card>
+
+              <div className="grid gap-6 xl:grid-cols-2">
                 <BulletSection
-                  title="Strengths"
+                  title="What you're doing best"
+                  description="Strengths to protect and scale."
                   items={selectedAnalysis.strengths}
+                  icon={TrendingUp}
+                  tone="positive"
                 />
                 <BulletSection
-                  title="Weaknesses"
+                  title="What's hurting your results"
+                  description="Leaks that are costing you money."
                   items={selectedAnalysis.weaknesses}
+                  icon={TrendingDown}
+                  tone="negative"
                 />
                 <BulletSection
-                  title="Patterns"
+                  title="Patterns in your trading"
+                  description="Timing, instruments, direction, and behavior trends."
                   items={selectedAnalysis.patterns}
+                  icon={BarChart3}
                 />
                 <BulletSection
-                  title="Recommendations"
+                  title="How to maximize profits & improve"
+                  description="Prioritized actions based on your data."
                   items={selectedAnalysis.recommendations}
+                  icon={Lightbulb}
+                  tone="accent"
                 />
                 <BulletSection
-                  title="Rules for next trades"
+                  title="Rules to minimize losses"
+                  description="Guardrails for your next trades."
                   items={selectedAnalysis.rulesForNextTrades}
+                  icon={Shield}
+                  tone="warning"
                 />
                 <BulletSection
-                  title="Data limitations"
+                  title="Data to log for better analysis"
+                  description="Fill these gaps in your journal for deeper coaching."
                   items={selectedAnalysis.dataLimitations}
+                  icon={AlertTriangle}
                 />
-              </CardContent>
-            </Card>
+              </div>
+            </>
           ) : (
             <Card>
               <CardContent className="text-muted-foreground py-10 text-sm">
-                Generate an analysis to see structured coaching output here.
+                Generate an analysis to see personalized coaching on profits,
+                losses, patterns, and journal gaps.
               </CardContent>
             </Card>
           )}
@@ -371,7 +435,7 @@ export function AiCoachManager({
                       </Badge>
                     </div>
                     <CardDescription>
-                      {new Date(message.createdAt).toLocaleString()}
+                      <FormattedDateTime value={message.createdAt} />
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -397,31 +461,46 @@ export function AiCoachManager({
           <Card>
             <CardHeader>
               <CardTitle>Analysis Reports</CardTitle>
-              <CardDescription>Saved coaching analyses</CardDescription>
+              <CardDescription>
+                {filteredAnalyses.length} saved report
+                {filteredAnalyses.length === 1 ? "" : "s"} — click to open
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2">
               {filteredAnalyses.length === 0 ? (
                 <p className="text-muted-foreground text-sm">No reports yet.</p>
               ) : (
                 filteredAnalyses.map((analysis) => (
-                  <div
+                  <button
                     key={analysis.id}
-                    className="rounded-lg border px-4 py-3"
+                    type="button"
+                    onClick={() => {
+                      setSelectedAnalysisId(analysis.id);
+                      setTab("analysis");
+                    }}
+                    className={cn(
+                      "hover:bg-muted/50 w-full rounded-lg border px-4 py-3 text-left transition-colors",
+                      selectedAnalysisId === analysis.id &&
+                        "border-primary bg-primary/5",
+                    )}
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">
-                        {new Date(analysis.createdAt).toLocaleString()}
+                        <FormattedDateTime value={analysis.createdAt} />
                       </p>
                       <Badge
                         className={confidenceTone(analysis.sampleConfidence)}
                       >
                         {analysis.sampleConfidence}
                       </Badge>
+                      <Badge variant="outline">
+                        {analysis.sampleSize} trades
+                      </Badge>
                     </div>
-                    <p className="text-muted-foreground mt-2 text-sm">
+                    <p className="text-muted-foreground mt-2 line-clamp-2 text-sm">
                       {analysis.summary}
                     </p>
-                  </div>
+                  </button>
                 ))
               )}
             </CardContent>

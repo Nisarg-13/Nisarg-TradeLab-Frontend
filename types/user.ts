@@ -6,6 +6,9 @@ export type UserProfile = {
   selectedTradingAccountId: string | null;
   createdAt: string;
   updatedAt: string;
+  features: {
+    aiCoach: boolean;
+  };
 };
 
 export type ApiDataResponse<T> = {

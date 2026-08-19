@@ -8,6 +8,7 @@ import {
   EMPTY_DIRECTION_ANALYTICS,
   EMPTY_EDGE_FINDER_ANALYTICS,
   EMPTY_EXECUTION_ANALYTICS,
+  EMPTY_INSIGHTS_ANALYTICS,
   EMPTY_PLANNED_RR_ANALYTICS,
   EMPTY_TAG_ANALYTICS,
 } from "@/lib/analytics/empty-analytics";
@@ -21,6 +22,7 @@ import {
   getEdgeFinderAnalytics,
   getExecutionAnalytics,
   getHeatmapAnalytics,
+  getInsightsAnalytics,
   getInstrumentPerformance,
   getMistakeAnalytics,
   getPeriodComparison,
@@ -54,6 +56,7 @@ import type {
   StrategyPerformance,
   TimeAnalytics,
   TradeMetricsGroup,
+  InsightsAnalytics,
 } from "@/types/analytics";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
 
@@ -184,6 +187,7 @@ export default async function AnalyticsOverviewPage() {
   let concentrationAnalytics = EMPTY_CONCENTRATION_ANALYTICS;
   let executionAnalytics = EMPTY_EXECUTION_ANALYTICS;
   let edgeFinderAnalytics = EMPTY_EDGE_FINDER_ANALYTICS;
+  let insightsAnalytics: InsightsAnalytics = EMPTY_INSIGHTS_ANALYTICS;
 
   try {
     const accountsResponse = await listAccounts(getServerAuthToken);
@@ -235,6 +239,7 @@ export default async function AnalyticsOverviewPage() {
       concentrationResponse,
       executionResponse,
       edgeFinderResponse,
+      insightsResponse,
     ] = await Promise.all([
       getAnalyticsSummary(getServerAuthToken, query),
       getInstrumentPerformance(getServerAuthToken, query),
@@ -255,6 +260,7 @@ export default async function AnalyticsOverviewPage() {
       getConcentrationAnalytics(getServerAuthToken, query),
       getExecutionAnalytics(getServerAuthToken, query),
       getEdgeFinderAnalytics(getServerAuthToken, query),
+      getInsightsAnalytics(getServerAuthToken, query),
     ]);
 
     summary = summaryResponse.data;
@@ -276,6 +282,7 @@ export default async function AnalyticsOverviewPage() {
     concentrationAnalytics = concentrationResponse.data;
     executionAnalytics = executionResponse.data;
     edgeFinderAnalytics = edgeFinderResponse.data;
+    insightsAnalytics = insightsResponse.data;
   } catch {
     summary = EMPTY_ANALYTICS_SUMMARY;
     instruments = [];
@@ -296,6 +303,7 @@ export default async function AnalyticsOverviewPage() {
     concentrationAnalytics = EMPTY_CONCENTRATION_ANALYTICS;
     executionAnalytics = EMPTY_EXECUTION_ANALYTICS;
     edgeFinderAnalytics = EMPTY_EDGE_FINDER_ANALYTICS;
+    insightsAnalytics = EMPTY_INSIGHTS_ANALYTICS;
   }
 
   return (
@@ -329,6 +337,7 @@ export default async function AnalyticsOverviewPage() {
         initialConcentration={concentrationAnalytics}
         initialExecution={executionAnalytics}
         initialEdgeFinder={edgeFinderAnalytics}
+        initialInsights={insightsAnalytics}
       />
     </Suspense>
   );

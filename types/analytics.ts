@@ -419,6 +419,80 @@ export type EdgeFinderAnalytics = {
   weakest: EdgeFinderCombination[];
 };
 
+export type InsightsHighlights = {
+  bestHour: TradeMetricsGroup | null;
+  worstHour: TradeMetricsGroup | null;
+  bestSession: TradeMetricsGroup | null;
+  worstSession: TradeMetricsGroup | null;
+  bestDayOfWeek: TradeMetricsGroup | null;
+  worstDayOfWeek: TradeMetricsGroup | null;
+  bestSymbol: TradeMetricsGroup | null;
+  worstSymbol: TradeMetricsGroup | null;
+  bestTimeframe: TradeMetricsGroup | null;
+  worstTimeframe: TradeMetricsGroup | null;
+};
+
+export type SessionSymbolRow = {
+  session: string;
+  sessionLabel: string;
+  symbol: string;
+  tradeCount: number;
+  netPnl: string;
+  totalR: string | null;
+  winRate: string | null;
+  averageR: string | null;
+  sampleConfidence: SampleConfidence;
+};
+
+export type TimeframeOutcome = {
+  key: string;
+  label: string;
+  wins: number;
+  losses: number;
+  breakeven: number;
+  winRate: string | null;
+  netPnl: string;
+  tradeCount: number;
+};
+
+export type PlanComplianceBreakdown = {
+  key: string;
+  label: string;
+  followed: number;
+  partiallyFollowed: number;
+  didNotFollow: number;
+  notReviewed: number;
+  followedWinRate: string | null;
+  notFollowedWinRate: string | null;
+};
+
+export type JournalCoverage = {
+  closedTrades: number;
+  withChartTimeframe: number;
+  withPreTradePlan: number;
+  withPostTradePlan: number;
+  withWhatWentWell: number;
+  withWhatWentWrong: number;
+  withPlanCompliance: number;
+  withEntryCriteria: number;
+  withStrategies: number;
+  withMistakesTagged: number;
+};
+
+export type InsightsAnalytics = {
+  highlights: InsightsHighlights;
+  sessionSymbols: SessionSymbolRow[];
+  timeframes: TradeMetricsGroup[];
+  timeframeOutcomes: TimeframeOutcome[];
+  journalCoverage: JournalCoverage;
+  planComplianceByTimeframe: PlanComplianceBreakdown[];
+  winningEntryCriteria: TradeMetricsGroup[];
+  losingEntryCriteria: TradeMetricsGroup[];
+  winningStrategies: TradeMetricsGroup[];
+  losingStrategies: TradeMetricsGroup[];
+  losingMistakes: TradeMetricsGroup[];
+};
+
 export type ApiDataResponse<T> = {
   data: T;
 };

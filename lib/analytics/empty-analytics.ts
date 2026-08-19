@@ -4,6 +4,7 @@ import type {
   DirectionAnalytics,
   ExecutionAnalytics,
   EdgeFinderAnalytics,
+  InsightsAnalytics,
   PlannedRrAnalytics,
   TagAnalyticsGroup,
 } from "@/types/analytics";
@@ -98,4 +99,40 @@ export const EMPTY_EDGE_FINDER_ANALYTICS: EdgeFinderAnalytics = {
   evaluatedCombinationCount: 0,
   strongest: [],
   weakest: [],
+};
+
+export const EMPTY_INSIGHTS_ANALYTICS: InsightsAnalytics = {
+  highlights: {
+    bestHour: null,
+    worstHour: null,
+    bestSession: null,
+    worstSession: null,
+    bestDayOfWeek: null,
+    worstDayOfWeek: null,
+    bestSymbol: null,
+    worstSymbol: null,
+    bestTimeframe: null,
+    worstTimeframe: null,
+  },
+  sessionSymbols: [],
+  timeframes: [],
+  timeframeOutcomes: [],
+  journalCoverage: {
+    closedTrades: 0,
+    withChartTimeframe: 0,
+    withPreTradePlan: 0,
+    withPostTradePlan: 0,
+    withWhatWentWell: 0,
+    withWhatWentWrong: 0,
+    withPlanCompliance: 0,
+    withEntryCriteria: 0,
+    withStrategies: 0,
+    withMistakesTagged: 0,
+  },
+  planComplianceByTimeframe: [],
+  winningEntryCriteria: [],
+  losingEntryCriteria: [],
+  winningStrategies: [],
+  losingStrategies: [],
+  losingMistakes: [],
 };

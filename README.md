@@ -5,7 +5,9 @@
 > Frontend repository for **Nisarg’s TradeLab**, a personal trading journal, risk-management, analytics, MT5-sync, and AI-assisted performance platform.
 
 **Frontend repository:** https://github.com/Nisarg-13/Nisarg-TradeLab-Frontend  
-**Backend repository:** https://github.com/Nisarg-13/Nisarg-TradeLab-Backend
+**Backend repository:** FastAPI backend (`Nisarg-TradeLab-Backend-FastAPI`) — production API on FastAPI Cloud
+
+> The legacy NestJS backend is retired. All API calls go to the FastAPI backend.
 
 ---
 
@@ -52,7 +54,7 @@ This repository contains **only the frontend/UI application**.
 Those responsibilities belong to:
 
 ```text
-Nisarg-TradeLab-Backend
+Nisarg-TradeLab-Backend-FastAPI
 ```
 
 ---
@@ -97,15 +99,15 @@ The frontend should make these answers fast, clear, and easy to understand.
                          | HTTPS / REST API
                          v
         +----------------------------------+
-        | Nisarg-TradeLab-Backend          |
+        | Nisarg-TradeLab-Backend-FastAPI  |
         |                                  |
-        | Node.js + NestJS                 |
-        | Prisma                           |
-        | PostgreSQL / Neon                |
-        | Risk Engine                      |
-        | Analytics Engine                 |
-        | Gemini AI                        |
-        | MT5 Sync                         |
+        | Python + FastAPI               |
+        | SQLAlchemy                     |
+        | PostgreSQL / Neon              |
+        | Risk Engine                    |
+        | Analytics Engine               |
+        | OpenAI / Gemini AI             |
+        | MT5 Sync                       |
         +----------------------------------+
 ```
 

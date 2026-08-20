@@ -48,6 +48,9 @@ function liveTone(status: LiveDataStatus) {
   }
 }
 
+const mt5ApiBaseUrl =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? null;
+
 export function Mt5ConnectionPanel({
   tradingAccountId,
   accountName,
@@ -155,6 +158,17 @@ export function Mt5ConnectionPanel({
     }
   }
 
+  async function copyApiUrl() {
+    if (!mt5ApiBaseUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(mt5ApiBaseUrl);
+      toast.success("Backend URL copied.");
+    } catch {
+      toast.error("Unable to copy automatically. Copy the URL manually.");
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -222,6 +236,39 @@ export function Mt5ConnectionPanel({
             >
               Copy key
             </Button>
+          </div>
+        ) : null}
+
+        {mt5ApiBaseUrl ? (
+          <div className="rounded-lg border p-4">
+            <p className="text-sm font-medium">MT5 EA setup</p>
+            <ol className="text-muted-foreground mt-2 list-decimal space-y-1 pl-4 text-sm">
+              <li>
+                In MT5: Tools → Options → Expert Advisors → enable{" "}
+                <strong className="text-foreground">
+                  Allow WebRequest for listed URL
+                </strong>
+                .
+              </li>
+              <li>
+                Add this backend URL to the allowlist (no trailing slash):
+              </li>
+            </ol>
+            <p className="mt-2 font-mono text-sm break-all">{mt5ApiBaseUrl}</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3"
+              onClick={copyApiUrl}
+            >
+              Copy backend URL
+            </Button>
+            <p className="text-muted-foreground mt-3 text-xs">
+              Set EA input <span className="font-mono">ApiBaseUrl</span> to the
+              same URL and paste your connection key into{" "}
+              <span className="font-mono">ConnectionKey</span>. Restart MT5
+              after updating the allowlist.
+            </p>
           </div>
         ) : null}
 

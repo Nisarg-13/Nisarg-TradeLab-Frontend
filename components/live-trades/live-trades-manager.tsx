@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
 import { PageHeader } from "@/components/layout/page-header";
@@ -31,6 +31,8 @@ import type {
   LiveTradePosition,
   LiveTradesResponse,
 } from "@/types/live-trades";
+
+const LIVE_TRADES_POLL_INTERVAL_MS = 1_000;
 
 function liveStatusTone(status: LiveDataStatus) {
   switch (status) {
@@ -143,30 +145,53 @@ export function LiveTradesManager({
     [accountId, data.positions],
   );
 
-  async function handleRefresh() {
-    setIsRefreshing(true);
+  const refreshLiveTrades = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!options?.silent) {
+        setIsRefreshing(true);
+      }
 
-    try {
-      const response = await getLiveTrades(getAuthToken, {
-        tradingAccountId: accountId || undefined,
-      });
+      try {
+        const response = await getLiveTrades(getAuthToken, {
+          tradingAccountId: accountId || undefined,
+        });
 
-      setData(response.data);
-      setLastRefreshedAt(new Date().toISOString());
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to refresh live trades.",
-      );
-    } finally {
-      setIsRefreshing(false);
-    }
-  }
+        setData(response.data);
+        setLastRefreshedAt(new Date().toISOString());
+      } catch (error) {
+        if (!options?.silent) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to refresh live trades.",
+          );
+        }
+      } finally {
+        if (!options?.silent) {
+          setIsRefreshing(false);
+        }
+      }
+    },
+    [accountId, getAuthToken],
+  );
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    void refreshLiveTrades({ silent: true });
+  }, [accountId, isReady, refreshLiveTrades]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void refreshLiveTrades({ silent: true });
+    }, LIVE_TRADES_POLL_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [refreshLiveTrades]);
 
   useInitialPersistedAccountLoad(
     isReady,
-    () => handleRefresh(),
+    () => refreshLiveTrades(),
     Boolean(accountId),
   );
 
@@ -199,7 +224,7 @@ export function LiveTradesManager({
           <Button
             type="button"
             disabled={isRefreshing}
-            onClick={() => void handleRefresh()}
+            onClick={() => void refreshLiveTrades()}
           >
             {isRefreshing ? "Refreshing..." : "Refresh"}
           </Button>
@@ -211,7 +236,7 @@ export function LiveTradesManager({
         connections={filteredConnections}
       />
 
-      {isRefreshing ? (
+      {isRefreshing && filteredPositions.length === 0 ? (
         <Card>
           <CardContent className="py-6">
             <TableSkeleton rows={4} />

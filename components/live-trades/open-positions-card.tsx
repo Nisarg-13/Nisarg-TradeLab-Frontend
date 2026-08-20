@@ -109,10 +109,9 @@ export function OpenPositionsCard({
                     {formatTradePrice(position.averageEntryPrice)}
                   </td>
                   <td className="tabular-data py-3">
-                    {position.liveStatus === "STALE" ||
-                    position.liveStatus === "DISCONNECTED"
-                      ? "—"
-                      : formatTradePrice(position.currentPrice)}
+                    {position.currentPrice
+                      ? formatTradePrice(position.currentPrice)
+                      : "—"}
                   </td>
                   <td className="tabular-data py-3">
                     {formatTradePrice(position.currentStopLoss)}
@@ -131,17 +130,13 @@ export function OpenPositionsCard({
                         : "text-loss",
                     )}
                   >
-                    {position.liveStatus === "LIVE"
-                      ? formatSignedMoney(
-                          position.floatingPnl,
-                          position.tradingAccount.currency,
-                        )
-                      : "—"}
+                    {formatSignedMoney(
+                      position.floatingPnl,
+                      position.tradingAccount.currency,
+                    )}
                   </td>
                   <td className="tabular-data py-3">
-                    {position.liveStatus === "LIVE"
-                      ? (position.currentR ?? "—")
-                      : "—"}
+                    {position.currentR ?? "—"}
                   </td>
                   <td className="py-3">
                     <FormattedDateTime

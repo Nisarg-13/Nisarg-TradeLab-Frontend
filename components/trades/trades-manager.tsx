@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
@@ -8,7 +7,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { BulkJournalPanel } from "@/components/trades/bulk-journal-panel";
 import { TradesTable } from "@/components/trades/trades-table";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -233,17 +232,18 @@ export function TradesManager({
         eyebrow="Journal"
         title="Trades"
         description="Browse, filter, and review your open and closed trades."
-      >
-        <Link href="/trades/new" className={cn(buttonVariants())}>
-          New trade
-        </Link>
-      </PageHeader>
+      />
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 pb-4">
-          <div>
-            <CardTitle>All trades</CardTitle>
-            <CardDescription className="mt-1">
+        <CardHeader
+          className={cn(
+            "gap-4 sm:flex-row sm:items-start sm:justify-between",
+            filtersOpen && "border-b pb-5",
+          )}
+        >
+          <div className="min-w-0 flex-1 space-y-1">
+            <CardTitle className="leading-snug">All trades</CardTitle>
+            <CardDescription>
               {meta.total} trade{meta.total === 1 ? "" : "s"} total
               {selectedTradeIds.length > 0
                 ? ` · ${selectedTradeIds.length} selected`
@@ -285,7 +285,7 @@ export function TradesManager({
           </div>
         </CardHeader>
         {filtersOpen ? (
-          <CardContent className="border-b pb-6">
+          <div className="bg-muted/20 border-b px-6 py-5">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="filter-account">Account</Label>
@@ -361,29 +361,29 @@ export function TradesManager({
                   }
                 />
               </div>
-              <div className="flex items-end gap-2">
+            </div>
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                disabled={isLoading}
+                onClick={() => void applyFilters()}
+              >
+                {isLoading ? "Applying..." : "Apply filters"}
+              </Button>
+              {activeFilterCount > 0 ? (
                 <Button
                   type="button"
+                  variant="outline"
                   disabled={isLoading}
-                  onClick={() => void applyFilters()}
+                  onClick={() => void clearFilters()}
                 >
-                  {isLoading ? "Applying..." : "Apply filters"}
+                  Clear
                 </Button>
-                {activeFilterCount > 0 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isLoading}
-                    onClick={() => void clearFilters()}
-                  >
-                    Clear
-                  </Button>
-                ) : null}
-              </div>
+              ) : null}
             </div>
-          </CardContent>
+          </div>
         ) : null}
-        <CardContent className="space-y-4 pt-0">
+        <CardContent className={cn("space-y-4", filtersOpen ? "pt-5" : "pt-0")}>
           {showBulkJournal && selectedTradeIds.length > 0 ? (
             <BulkJournalPanel
               selectedTradeIds={selectedTradeIds}

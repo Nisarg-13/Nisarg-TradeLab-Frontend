@@ -53,7 +53,7 @@ function isFiniteMoney(value: string | null | undefined) {
 }
 
 function resolveAccountBalances(summary: AnalyticsSummary) {
-  const netPnl = Number(summary.netPnl);
+  const realizedNetPnl = Number(summary.netPnl);
   const lastCurveBalance = summary.equityCurve.at(-1)?.balance;
 
   let startingBalance = isFiniteMoney(summary.startingBalance)
@@ -70,27 +70,66 @@ function resolveAccountBalances(summary: AnalyticsSummary) {
   if (
     !startingBalance &&
     isFiniteMoney(currentBalance) &&
-    Number.isFinite(netPnl)
+    Number.isFinite(realizedNetPnl)
   ) {
-    startingBalance = (Number(currentBalance) - netPnl).toFixed(2);
+    startingBalance = (Number(currentBalance) - realizedNetPnl).toFixed(2);
   }
 
   if (
     !currentBalance &&
     isFiniteMoney(startingBalance) &&
-    Number.isFinite(netPnl)
+    Number.isFinite(realizedNetPnl)
   ) {
-    currentBalance = (Number(startingBalance) + netPnl).toFixed(2);
+    currentBalance = (Number(startingBalance) + realizedNetPnl).toFixed(2);
   }
 
   if (!startingBalance && isFiniteMoney(summary.equityCurve[0]?.balance)) {
     startingBalance = summary.equityCurve[0]!.balance;
   }
 
+  const starting = startingBalance ?? "0.00";
+  const current = currentBalance ?? "0.00";
+  const hasSyncedBalance = Number(starting) > 0 && Number(current) > 0;
+  const accountPnl = hasSyncedBalance
+    ? Number(current) - Number(starting)
+    : realizedNetPnl;
+  const unrealizedPnl = hasSyncedBalance
+    ? accountPnl - realizedNetPnl
+    : Number(summary.unrealizedPnl ?? 0);
+
   return {
-    startingBalance: startingBalance ?? "0.00",
-    currentBalance: currentBalance ?? "0.00",
+    startingBalance: starting,
+    currentBalance: current,
+    hasSyncedBalance,
+    accountPnl: hasSyncedBalance
+      ? accountPnl.toFixed(2)
+      : (summary.accountPnl ?? summary.netPnl),
+    unrealizedPnl: hasSyncedBalance
+      ? unrealizedPnl.toFixed(2)
+      : (summary.unrealizedPnl ?? "0.00"),
   };
+}
+
+function buildNetPnlHint(
+  summary: AnalyticsSummary,
+  currency: string,
+  hasSyncedBalance: boolean,
+  unrealizedPnl: string,
+) {
+  const parts = [
+    `${summary.closedTradeCount} closed trades`,
+    `${summary.winCount}W / ${summary.lossCount}L`,
+    summary.breakevenCount > 0 ? `${summary.breakevenCount}BE` : null,
+  ];
+
+  if (hasSyncedBalance && Math.abs(Number(unrealizedPnl)) >= 0.01) {
+    parts.push(
+      `${formatMoney(summary.netPnl, currency)} realized`,
+      `${formatMoney(unrealizedPnl, currency)} open`,
+    );
+  }
+
+  return parts.filter(Boolean).join(" · ");
 }
 
 function resolveCurrentStreak(summary: AnalyticsSummary) {
@@ -134,22 +173,27 @@ export function DashboardSummaryCards({
   summary: AnalyticsSummary;
 }) {
   const currency = summary.currency;
-  const { startingBalance, currentBalance } = resolveAccountBalances(summary);
+  const {
+    startingBalance,
+    currentBalance,
+    hasSyncedBalance,
+    accountPnl,
+    unrealizedPnl,
+  } = resolveAccountBalances(summary);
   const streak = resolveCurrentStreak(summary);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <SummaryCard
         label="Net PnL"
-        value={formatMoney(summary.netPnl, currency)}
-        hint={[
-          `${summary.closedTradeCount} closed trades`,
-          `${summary.winCount}W / ${summary.lossCount}L`,
-          summary.breakevenCount > 0 ? `${summary.breakevenCount}BE` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-        valueClassName={pnlTextClass(summary.netPnl)}
+        value={formatMoney(accountPnl, currency)}
+        hint={buildNetPnlHint(
+          summary,
+          currency,
+          hasSyncedBalance,
+          unrealizedPnl,
+        )}
+        valueClassName={pnlTextClass(accountPnl)}
       />
       <SummaryCard
         label="Current balance"

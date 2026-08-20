@@ -62,6 +62,8 @@ export type AnalyticsSummary = {
   closedTradeCount: number;
   openTradeCount: number;
   netPnl: string;
+  accountPnl?: string;
+  unrealizedPnl?: string;
   grossProfit: string;
   grossLoss: string;
   returnPercentage: string | null;

@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileSettingsForm } from "@/components/settings/profile-settings-form";
-import { getServerCurrentUser } from "@/lib/api/users";
+import { getServerCurrentUser } from "@/lib/api/users.server";
 
 export default async function SettingsPage() {
   let profile = null;

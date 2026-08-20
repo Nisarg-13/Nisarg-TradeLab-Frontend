@@ -1,6 +1,6 @@
 import { getServerAppContext } from "@/lib/server/app-context";
 import { resolveAccountIdForAccounts } from "@/lib/preferences/selected-account";
-import { getServerCurrentUser } from "@/lib/api/users";
+import { getServerCurrentUser } from "@/lib/api/users.server";
 
 export async function getServerSelectedAccountId(
   accounts?: Array<{ id: string }>,

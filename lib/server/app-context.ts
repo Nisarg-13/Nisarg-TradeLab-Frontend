@@ -1,7 +1,7 @@
 import { cache } from "react";
 
 import { listAccounts } from "@/lib/api/accounts";
-import { getServerCurrentUser } from "@/lib/api/users";
+import { getServerCurrentUser } from "@/lib/api/users.server";
 import { getServerAuthToken } from "@/lib/auth/server";
 import { buildTradingAccountQuery } from "@/lib/preferences/server-selected-account";
 import { resolveAccountIdForAccounts } from "@/lib/preferences/selected-account";

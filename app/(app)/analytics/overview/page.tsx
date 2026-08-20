@@ -31,6 +31,7 @@ import {
   getPsychologyAnalytics,
   getRiskStats,
   getRollingPerformance,
+  getSessionPerformance,
   getStrategyPerformance,
   getTagAnalytics,
   getTimeAnalytics,
@@ -53,6 +54,7 @@ import type {
   PsychologyAnalytics,
   RiskStatGroup,
   RollingPerformance,
+  SessionPerformance,
   StrategyPerformance,
   TimeAnalytics,
   TradeMetricsGroup,
@@ -169,6 +171,7 @@ export default async function AnalyticsOverviewPage() {
   let mistakes: Mistake[] = [];
   let summary: AnalyticsSummary = EMPTY_ANALYTICS_SUMMARY;
   let instruments: InstrumentPerformance[] = [];
+  let sessionPerformance: SessionPerformance[] = [];
   let strategyRows: StrategyPerformance[] = [];
   let planCompliance: PlanComplianceGroup[] = [];
   let riskStats: RiskStatGroup[] = [];
@@ -222,6 +225,7 @@ export default async function AnalyticsOverviewPage() {
     const [
       summaryResponse,
       instrumentsResponse,
+      sessionPerformanceResponse,
       strategiesResponse,
       planComplianceResponse,
       riskStatsResponse,
@@ -243,6 +247,7 @@ export default async function AnalyticsOverviewPage() {
     ] = await Promise.all([
       getAnalyticsSummary(getServerAuthToken, query),
       getInstrumentPerformance(getServerAuthToken, query),
+      getSessionPerformance(getServerAuthToken, query),
       getStrategyPerformance(getServerAuthToken, query),
       getPlanCompliance(getServerAuthToken, query),
       getRiskStats(getServerAuthToken, query),
@@ -265,6 +270,7 @@ export default async function AnalyticsOverviewPage() {
 
     summary = summaryResponse.data;
     instruments = instrumentsResponse.data;
+    sessionPerformance = sessionPerformanceResponse.data;
     strategyRows = strategiesResponse.data;
     planCompliance = planComplianceResponse.data;
     riskStats = riskStatsResponse.data;
@@ -286,6 +292,7 @@ export default async function AnalyticsOverviewPage() {
   } catch {
     summary = EMPTY_ANALYTICS_SUMMARY;
     instruments = [];
+    sessionPerformance = [];
     strategyRows = [];
     planCompliance = [];
     riskStats = [];
@@ -319,6 +326,7 @@ export default async function AnalyticsOverviewPage() {
         mistakes={mistakes}
         initialSummary={summary}
         initialInstruments={instruments}
+        initialSessionPerformance={sessionPerformance}
         initialStrategies={strategyRows}
         initialPlanCompliance={planCompliance}
         initialRiskStats={riskStats}

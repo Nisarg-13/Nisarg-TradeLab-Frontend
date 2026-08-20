@@ -130,6 +130,20 @@ export type StrategyPerformance = GroupedPerformanceMetrics & {
   strategyName: string;
 };
 
+export type SessionPerformance = {
+  session: string;
+  sessionLabel: string;
+  tradeCount: number;
+  netPnl: string;
+  totalR: string | null;
+  winRate: string | null;
+  averageR: string | null;
+  moneyExpectancy: string | null;
+  rExpectancy: string | null;
+  profitFactor: string | null;
+  sampleConfidence: SampleConfidence;
+};
+
 export type DirectionSideMetrics = {
   direction: "LONG" | "SHORT";
   label: string;

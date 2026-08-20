@@ -1,15 +1,18 @@
+import { normalizeTradePriceString } from "@/lib/formatting/trade-price";
+
 export function formatPriceInput(value: string | null | undefined): string {
   if (!value) {
     return "";
   }
 
-  const parsed = Number(value);
+  const normalized = normalizeTradePriceString(value);
+  const parsed = Number(normalized);
 
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return "";
   }
 
-  return value;
+  return normalized;
 }
 
 export function parseOptionalPrice(value: string): number | null {

@@ -20,6 +20,7 @@ import type {
   PlannedRrAnalytics,
   RiskStatGroup,
   RollingPerformance,
+  SessionPerformance,
   StrategyPerformance,
   TagAnalyticsGroup,
   TimeAnalytics,
@@ -58,6 +59,16 @@ export async function getInstrumentPerformance(
 ) {
   return apiRequest<ApiDataResponse<InstrumentPerformance[]>>(
     `/api/v1/analytics/instruments${buildQuery(query)}`,
+    { getAuthToken },
+  );
+}
+
+export async function getSessionPerformance(
+  getAuthToken: () => Promise<string | null>,
+  query: AnalyticsQuery = {},
+) {
+  return apiRequest<ApiDataResponse<SessionPerformance[]>>(
+    `/api/v1/analytics/sessions${buildQuery(query)}`,
     { getAuthToken },
   );
 }

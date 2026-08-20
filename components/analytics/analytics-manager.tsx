@@ -50,6 +50,7 @@ import {
   getPsychologyAnalytics,
   getRiskStats,
   getRollingPerformance,
+  getSessionPerformance,
   getStrategyPerformance,
   getTagAnalytics,
   getTimeAnalytics,
@@ -84,6 +85,7 @@ import type {
   PsychologyAnalytics,
   RiskStatGroup,
   RollingPerformance,
+  SessionPerformance,
   StrategyPerformance,
   TagAnalyticsGroup,
   TimeAnalytics,
@@ -120,6 +122,7 @@ export function AnalyticsManager({
   mistakes,
   initialSummary,
   initialInstruments,
+  initialSessionPerformance,
   initialStrategies,
   initialPlanCompliance,
   initialRiskStats,
@@ -146,6 +149,7 @@ export function AnalyticsManager({
   mistakes: Mistake[];
   initialSummary: AnalyticsSummary;
   initialInstruments: InstrumentPerformance[];
+  initialSessionPerformance: SessionPerformance[];
   initialStrategies: StrategyPerformance[];
   initialPlanCompliance: PlanComplianceGroup[];
   initialRiskStats: RiskStatGroup[];
@@ -186,6 +190,9 @@ export function AnalyticsManager({
   const [isLoading, setIsLoading] = useState(false);
   const [summary, setSummary] = useState(initialSummary);
   const [instruments, setInstruments] = useState(initialInstruments);
+  const [sessionPerformance, setSessionPerformance] = useState(
+    initialSessionPerformance,
+  );
   const [strategyRows, setStrategyRows] = useState(initialStrategies);
   const [planCompliance, setPlanCompliance] = useState(initialPlanCompliance);
   const [riskStats, setRiskStats] = useState(initialRiskStats);
@@ -264,6 +271,7 @@ export function AnalyticsManager({
         const [
           summaryResponse,
           instrumentsResponse,
+          sessionPerformanceResponse,
           strategiesResponse,
           planComplianceResponse,
           riskStatsResponse,
@@ -285,6 +293,7 @@ export function AnalyticsManager({
         ] = await Promise.all([
           getAnalyticsSummary(getAuthToken, query),
           getInstrumentPerformance(getAuthToken, query),
+          getSessionPerformance(getAuthToken, query),
           getStrategyPerformance(getAuthToken, query),
           getPlanCompliance(getAuthToken, query),
           getRiskStats(getAuthToken, query),
@@ -312,6 +321,7 @@ export function AnalyticsManager({
 
         setSummary(summaryResponse.data);
         setInstruments(instrumentsResponse.data);
+        setSessionPerformance(sessionPerformanceResponse.data);
         setStrategyRows(strategiesResponse.data);
         setPlanCompliance(planComplianceResponse.data);
         setRiskStats(riskStatsResponse.data);
@@ -414,6 +424,24 @@ export function AnalyticsManager({
     [tagAnalytics],
   );
 
+  const sessionPerformanceRows = useMemo<TradeMetricsGroup[]>(
+    () =>
+      sessionPerformance.map((row) => ({
+        key: row.session,
+        label: row.sessionLabel,
+        tradeCount: row.tradeCount,
+        netPnl: row.netPnl,
+        totalR: row.totalR,
+        winRate: row.winRate,
+        averageR: row.averageR,
+        moneyExpectancy: row.moneyExpectancy,
+        rExpectancy: row.rExpectancy,
+        profitFactor: row.profitFactor,
+        sampleConfidence: row.sampleConfidence,
+      })),
+    [sessionPerformance],
+  );
+
   async function handleHeatmapMetricChange(metric: HeatmapMetric) {
     setHeatmapMetric(metric);
 
@@ -479,6 +507,13 @@ export function AnalyticsManager({
               currency={currency}
             />
           </div>
+          <MetricsGroupsTable
+            title="Session performance"
+            description="Asia, London, London/NY overlap, New York, and off-hours in your profile timezone."
+            rows={sessionPerformanceRows}
+            currency={currency}
+            nameHeader="Session"
+          />
           <PlanComplianceCard groups={planCompliance} currency={currency} />
         </div>
       ) : null}

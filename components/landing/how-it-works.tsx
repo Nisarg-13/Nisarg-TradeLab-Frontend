@@ -13,7 +13,7 @@ export function HowItWorks() {
       <div className="flex flex-col gap-4 md:gap-6">
         {LANDING_HOW_IT_WORKS.map((step, index) => (
           <div key={step.step} className="flex flex-col items-center gap-4">
-            <div className="bg-card hover:bg-card-hover w-full rounded-xl border p-6 transition-colors">
+            <div className="bg-card hover:bg-card-hover w-full rounded-xl border p-6 transition-all duration-300 hover:-translate-y-0.5">
               <div className="bg-primary/15 text-primary mb-4 flex size-10 items-center justify-center rounded-full text-sm font-semibold">
                 {step.step}
               </div>

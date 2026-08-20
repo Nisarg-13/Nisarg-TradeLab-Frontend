@@ -6,7 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { LANDING_ANALYTICS_CATEGORIES } from "@/lib/constants/landing";
+import {
+  LANDING_ANALYTICS_CATEGORIES,
+  LANDING_ANALYTICS_SECTION,
+} from "@/lib/constants/landing";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_ROWS = [
@@ -20,8 +23,8 @@ export function AnalyticsShowcase() {
   return (
     <LandingSection
       id="analytics"
-      title="Understand Where Your Edge Actually Comes From"
-      description="TradeLab breaks your performance down across the dimensions that matter so you can distinguish repeatable behavior from noise."
+      title={LANDING_ANALYTICS_SECTION.title}
+      description={LANDING_ANALYTICS_SECTION.description}
     >
       <div className="grid items-start gap-8 lg:grid-cols-2">
         <div>

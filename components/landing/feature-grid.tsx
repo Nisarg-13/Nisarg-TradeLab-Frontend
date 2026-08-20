@@ -16,7 +16,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { LANDING_FEATURES } from "@/lib/constants/landing";
+import {
+  LANDING_FEATURES,
+  LANDING_FEATURES_SECTION,
+} from "@/lib/constants/landing";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<(typeof LANDING_FEATURES)[number]["icon"], LucideIcon> = {
@@ -40,8 +43,8 @@ export function FeatureGrid() {
   return (
     <LandingSection
       id="features"
-      title="Everything You Need to Review and Improve Your Trading"
-      description="TradeLab combines journaling, analytics, risk management, MT5 synchronization, and AI-assisted performance review in one place."
+      title={LANDING_FEATURES_SECTION.title}
+      description={LANDING_FEATURES_SECTION.description}
     >
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {LANDING_FEATURES.map((feature) => {
@@ -49,7 +52,7 @@ export function FeatureGrid() {
           return (
             <Card
               key={feature.title}
-              className="hover:bg-card-hover bg-card/80 transition-colors"
+              className="hover:bg-card-hover bg-card/80 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)]"
             >
               <CardHeader>
                 <div

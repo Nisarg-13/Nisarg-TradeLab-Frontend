@@ -7,11 +7,11 @@ export function NoSignalsSection() {
   return (
     <LandingSection
       variant="muted"
-      title="TradeLab Doesn't Tell You What to Trade. It Helps You Understand How You Trade."
-      description="TradeLab focuses on your journal, your metrics, your execution, your behavior, and your process."
+      title={LANDING_NO_SIGNALS.title}
+      description={LANDING_NO_SIGNALS.description}
     >
-      <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-3">
-        {LANDING_NO_SIGNALS.map((item) => (
+      <div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-2">
+        {LANDING_NO_SIGNALS.items.map((item) => (
           <div
             key={item}
             className="bg-card flex items-center gap-3 rounded-xl border px-4 py-4"

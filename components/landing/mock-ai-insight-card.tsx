@@ -28,8 +28,8 @@ export function MockAiInsightCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm leading-relaxed">
-          New York-session performance is stronger than London-session
-          performance in the supplied sample.
+          Your New York session trades show stronger historical performance than
+          London session.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg border p-3">
@@ -46,8 +46,7 @@ export function MockAiInsightCard() {
             Suggested experiment
           </p>
           <p className="text-sm leading-relaxed">
-            For the next 20 trades, avoid the historically weak setup during
-            London and compare expectancy afterward.
+            Review your next 20 trades while maintaining consistent risk rules.
           </p>
         </div>
       </CardContent>

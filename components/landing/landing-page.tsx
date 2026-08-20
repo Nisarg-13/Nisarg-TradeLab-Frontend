@@ -6,6 +6,7 @@ import { HeroSection } from "@/components/landing/hero-section";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingNavbar } from "@/components/landing/landing-navbar";
+import { LandingReveal } from "@/components/landing/landing-reveal";
 import { Mt5Showcase } from "@/components/landing/mt5-showcase";
 import { NoSignalsSection } from "@/components/landing/no-signals-section";
 import { ProductPreview } from "@/components/landing/product-preview";
@@ -18,18 +19,40 @@ export function LandingPage() {
       <LandingNavbar />
       <main>
         <HeroSection />
-        <ProductPreview />
-        <FeatureGrid />
-        <HowItWorks />
-        <AnalyticsShowcase />
-        <AiCoachShowcase />
-        <RiskShowcase />
-        <Mt5Showcase />
-        <PsychologyShowcase />
-        <NoSignalsSection />
-        <FinalCta />
+        <LandingReveal delay={80}>
+          <ProductPreview />
+        </LandingReveal>
+        <LandingReveal>
+          <FeatureGrid />
+        </LandingReveal>
+        <LandingReveal>
+          <HowItWorks />
+        </LandingReveal>
+        <LandingReveal>
+          <AnalyticsShowcase />
+        </LandingReveal>
+        <LandingReveal>
+          <AiCoachShowcase />
+        </LandingReveal>
+        <LandingReveal>
+          <RiskShowcase />
+        </LandingReveal>
+        <LandingReveal>
+          <Mt5Showcase />
+        </LandingReveal>
+        <LandingReveal>
+          <PsychologyShowcase />
+        </LandingReveal>
+        <LandingReveal>
+          <NoSignalsSection />
+        </LandingReveal>
+        <LandingReveal>
+          <FinalCta />
+        </LandingReveal>
       </main>
-      <LandingFooter />
+      <LandingReveal delay={100}>
+        <LandingFooter />
+      </LandingReveal>
     </>
   );
 }

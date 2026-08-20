@@ -24,7 +24,7 @@ export function LandingNavbar() {
   }
 
   return (
-    <header className="bg-background/80 border-border/60 sticky top-0 z-50 border-b backdrop-blur-md">
+    <header className="bg-background/80 border-border/60 landing-navbar-enter sticky top-0 z-50 border-b backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
         <Link href="/" className="flex items-center gap-3">
           <div className="bg-primary flex size-9 items-center justify-center rounded-lg">

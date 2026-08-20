@@ -18,8 +18,8 @@ export function AiCoachShowcase() {
       id="ai-coach"
       variant="muted"
       eyebrow="AI Trading Coach"
-      title="An AI Coach That Uses Your Data — Not Market Predictions"
-      description="TradeLab's AI Coach interprets pre-calculated journal metrics to help identify strengths, weaknesses, behavioral patterns, risk issues, and measurable process improvements."
+      title="An AI Coach That Uses Your Data, Not Market Predictions"
+      description="TradeLab AI analyzes your journal metrics to identify strengths, weaknesses, behavior patterns, and improvement opportunities."
     >
       <div className="grid items-start gap-8 lg:grid-cols-2">
         <div className="space-y-4">

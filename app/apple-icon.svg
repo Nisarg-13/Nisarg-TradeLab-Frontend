@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Nisarg's TradeLab">
+  <rect width="180" height="180" rx="40" fill="#F2A71B"/>
+  <path
+    d="M40 126 L70 81 L93 108 L140 48"
+    fill="none"
+    stroke="#070B11"
+    stroke-width="14"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

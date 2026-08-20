@@ -4,7 +4,7 @@ test("landing page shows hero and auth actions", async ({ page }) => {
   await page.goto("/");
   await expect(
     page.getByRole("heading", {
-      name: /Turn Your Trading History Into Measurable Improvement/i,
+      name: /Turn Your Trading History Into Your Greatest Advantage/i,
     }),
   ).toBeVisible();
   await expect(

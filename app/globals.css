@@ -162,4 +162,100 @@
     font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
   }
+
+  .landing-fade-up {
+    animation: landing-fade-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .landing-delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .landing-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .landing-delay-300 {
+    animation-delay: 300ms;
+  }
+
+  .landing-delay-400 {
+    animation-delay: 400ms;
+  }
+
+  .landing-delay-500 {
+    animation-delay: 500ms;
+  }
+
+  .landing-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .landing-reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .landing-preview-glow {
+    animation: landing-preview-glow 5s ease-in-out infinite;
+  }
+
+  .landing-navbar-enter {
+    animation: landing-navbar-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes landing-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes landing-preview-glow {
+    0%,
+    100% {
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+    }
+
+    50% {
+      box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.45),
+        0 0 48px rgba(242, 167, 27, 0.08);
+    }
+  }
+
+  @keyframes landing-navbar-enter {
+    from {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .landing-fade-up,
+    .landing-navbar-enter,
+    .landing-preview-glow {
+      animation: none;
+    }
+
+    .landing-reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
 }

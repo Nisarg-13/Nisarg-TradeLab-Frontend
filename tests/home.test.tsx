@@ -29,7 +29,7 @@ describe("Home page", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /Turn Your Trading History Into Measurable Improvement/i,
+        name: /Turn Your Trading History Into Your Greatest Advantage/i,
       }),
     ).toBeInTheDocument();
     expect(
@@ -40,7 +40,7 @@ describe("Home page", () => {
     ).toBeGreaterThan(0);
     expect(
       screen.getByRole("heading", {
-        name: /Everything You Need to Review and Improve Your Trading/i,
+        name: /Everything You Need To Improve Your Trading/i,
       }),
     ).toBeInTheDocument();
   });

@@ -1,5 +1,5 @@
+import { AiCoachAccessRequest } from "@/components/ai-coach/ai-coach-access-request";
 import { AiCoachManager } from "@/components/ai-coach/ai-coach-manager";
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
 import { listAccounts } from "@/lib/api/accounts";
 import { listAiAnalyses, listAiChatHistory } from "@/lib/api/ai";
 import { getCurrentUser } from "@/lib/api/users";
@@ -19,15 +19,7 @@ export default async function AiCoachPage() {
   }
 
   if (!aiCoachEnabled) {
-    return (
-      <PlaceholderPage
-        title="AI Coach"
-        description="Personalized coaching from your trading journal is coming soon. Stay tuned — we're rolling this out gradually."
-        cardTitle="Feature coming soon"
-        cardDescription="AI Coach will analyze your trades, patterns, and journal entries to give you structured feedback."
-        cardBody="You'll be able to run performance analyses, ask questions about your journal, and get evidence-backed recommendations. We will enable access in upcoming releases."
-      />
-    );
+    return <AiCoachAccessRequest />;
   }
 
   let accounts: TradingAccount[] = [];

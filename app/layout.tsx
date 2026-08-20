@@ -21,8 +21,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nisarg's TradeLab",
-  description: "Track. Analyze. Improve. — Personal trading journal",
+  title: "Nisarg's TradeLab — Personal Trading Journal",
+  description:
+    "Journal every trade, analyze performance, manage risk, and improve with advanced analytics and evidence-based AI coaching.",
 };
 
 export default function RootLayout({

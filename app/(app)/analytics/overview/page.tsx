@@ -215,10 +215,7 @@ export default async function AnalyticsOverviewPage() {
     tags = [];
   }
 
-  const selectedAccountId = await getServerSelectedAccountId(
-    getServerAuthToken,
-    accounts,
-  );
+  const selectedAccountId = await getServerSelectedAccountId(accounts);
   const query = buildTradingAccountQuery(selectedAccountId);
 
   try {

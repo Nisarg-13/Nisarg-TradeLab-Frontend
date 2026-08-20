@@ -18,8 +18,7 @@ export default async function DailyJournalPage() {
   }
 
   const selectedAccountId =
-    (await getServerSelectedAccountId(getServerAuthToken, accounts)) ??
-    accounts[0]?.id;
+    (await getServerSelectedAccountId(accounts)) ?? accounts[0]?.id;
 
   try {
     const entriesResponse = await listDailyJournalEntries(getServerAuthToken, {

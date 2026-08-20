@@ -27,10 +27,7 @@ export default async function LiveTradesPage() {
     accounts = [];
   }
 
-  const selectedAccountId = await getServerSelectedAccountId(
-    getServerAuthToken,
-    accounts,
-  );
+  const selectedAccountId = await getServerSelectedAccountId(accounts);
 
   try {
     const liveTradesResponse = await getLiveTrades(

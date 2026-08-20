@@ -6,6 +6,7 @@ import {
   getInstrumentPerformance,
   getStrategyPerformance,
 } from "@/lib/api/analytics";
+import { getServerCurrentUser } from "@/lib/api/users";
 import { listTrades } from "@/lib/api/trades";
 import { getServerAuthToken } from "@/lib/auth/server";
 import {
@@ -20,84 +21,58 @@ import type {
 } from "@/types/analytics";
 import type { Trade } from "@/types/trade";
 
-async function loadAnalytics(accountId?: string) {
-  const query = buildTradingAccountQuery(accountId);
-
-  const [summaryResponse, instrumentsResponse, strategiesResponse] =
-    await Promise.all([
-      getAnalyticsSummary(getServerAuthToken, query),
-      getInstrumentPerformance(getServerAuthToken, query),
-      getStrategyPerformance(getServerAuthToken, query),
-    ]);
-
-  return {
-    summary: summaryResponse.data,
-    instruments: instrumentsResponse.data,
-    strategies: strategiesResponse.data,
-  };
-}
-
 export default async function DashboardPage() {
-  let accounts: TradingAccount[] = [];
-  let summary: AnalyticsSummary = EMPTY_ANALYTICS_SUMMARY;
-  let instruments: InstrumentPerformance[] = [];
-  let strategies: StrategyPerformance[] = [];
-  let recentTrades: Trade[] = [];
-  let openTrades: Trade[] = [];
+  const [accounts] = await Promise.all([
+    listAccounts(getServerAuthToken)
+      .then((response) => response.data)
+      .catch(() => [] as TradingAccount[]),
+    getServerCurrentUser().catch(() => null),
+  ]);
 
-  try {
-    const accountsResponse = await listAccounts(getServerAuthToken);
-    accounts = accountsResponse.data;
-  } catch {
-    accounts = [];
-  }
+  const selectedAccountId = await getServerSelectedAccountId(accounts);
+  const query = buildTradingAccountQuery(selectedAccountId);
 
-  const selectedAccountId = await getServerSelectedAccountId(
-    getServerAuthToken,
-    accounts,
-  );
-
-  try {
-    const analytics = await loadAnalytics(selectedAccountId);
-    summary = analytics.summary;
-    instruments = analytics.instruments;
-    strategies = analytics.strategies;
-  } catch {
-    summary = EMPTY_ANALYTICS_SUMMARY;
-    instruments = [];
-    strategies = [];
-  }
-
-  try {
-    const query = buildTradingAccountQuery(selectedAccountId);
-    const [tradesResponse, openTradesResponse] = await Promise.all([
-      listTrades(getServerAuthToken, {
-        limit: 5,
-        sort: "openedAt_desc",
-        ...query,
-      }),
-      listTrades(getServerAuthToken, {
-        status: "OPEN",
-        limit: 5,
-        sort: "openedAt_desc",
-        ...query,
-      }),
-    ]);
-    recentTrades = tradesResponse.data;
-    openTrades = openTradesResponse.data;
-  } catch {
-    recentTrades = [];
-    openTrades = [];
-  }
+  const [
+    summaryResult,
+    instrumentsResult,
+    strategiesResult,
+    recentTradesResult,
+    openTradesResult,
+  ] = await Promise.all([
+    getAnalyticsSummary(getServerAuthToken, query)
+      .then((response) => response.data)
+      .catch(() => EMPTY_ANALYTICS_SUMMARY),
+    getInstrumentPerformance(getServerAuthToken, query)
+      .then((response) => response.data)
+      .catch(() => [] as InstrumentPerformance[]),
+    getStrategyPerformance(getServerAuthToken, query)
+      .then((response) => response.data)
+      .catch(() => [] as StrategyPerformance[]),
+    listTrades(getServerAuthToken, {
+      limit: 5,
+      sort: "openedAt_desc",
+      ...query,
+    })
+      .then((response) => response.data)
+      .catch(() => [] as Trade[]),
+    listTrades(getServerAuthToken, {
+      status: "OPEN",
+      limit: 5,
+      sort: "openedAt_desc",
+      ...query,
+    })
+      .then((response) => response.data)
+      .catch(() => [] as Trade[]),
+  ]);
 
   return (
     <DashboardManager
       accounts={accounts}
-      initialSummary={summary}
-      initialInstruments={instruments}
-      initialStrategies={strategies}
-      initialRecentTrades={recentTrades}
-      openTrades={openTrades}
+      initialSummary={summaryResult as AnalyticsSummary}
+      initialInstruments={instrumentsResult}
+      initialStrategies={strategiesResult}
+      initialRecentTrades={recentTradesResult}
+      openTrades={openTradesResult}
     />
   );
 }

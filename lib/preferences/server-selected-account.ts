@@ -1,8 +1,7 @@
-import { getCurrentUser } from "@/lib/api/users";
+import { getServerCurrentUser } from "@/lib/api/users";
 import { resolveAccountIdForAccounts } from "@/lib/preferences/selected-account";
 
 export async function getServerSelectedAccountId(
-  getAuthToken: () => Promise<string | null>,
   accounts: Array<{ id: string }>,
 ): Promise<string | undefined> {
   if (accounts.length === 0) {
@@ -10,7 +9,7 @@ export async function getServerSelectedAccountId(
   }
 
   try {
-    const user = await getCurrentUser(getAuthToken);
+    const user = await getServerCurrentUser();
     const resolved = resolveAccountIdForAccounts(
       user.data.selectedTradingAccountId ?? "",
       accounts,

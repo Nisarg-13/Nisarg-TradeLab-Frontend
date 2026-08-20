@@ -33,10 +33,7 @@ export default async function AiCoachPage() {
     accounts = [];
   }
 
-  const selectedAccountId = await getServerSelectedAccountId(
-    getServerAuthToken,
-    accounts,
-  );
+  const selectedAccountId = await getServerSelectedAccountId(accounts);
 
   try {
     const [analysesResponse, chatResponse] = await Promise.all([

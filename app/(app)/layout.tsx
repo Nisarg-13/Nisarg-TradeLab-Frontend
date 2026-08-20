@@ -1,7 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { TimezoneProvider } from "@/components/providers/timezone-provider";
-import { getCurrentUser } from "@/lib/api/users";
-import { getServerAuthToken } from "@/lib/auth/server";
+import { getServerCurrentUser } from "@/lib/api/users";
 
 export default async function AppLayout({
   children,
@@ -11,7 +10,7 @@ export default async function AppLayout({
   let initialTimezone = "UTC";
 
   try {
-    const response = await getCurrentUser(getServerAuthToken);
+    const response = await getServerCurrentUser();
     initialTimezone = response.data.timezone;
   } catch {
     initialTimezone = "UTC";

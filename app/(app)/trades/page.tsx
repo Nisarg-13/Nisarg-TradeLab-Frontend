@@ -21,10 +21,7 @@ export default async function TradesPage() {
     accounts = [];
   }
 
-  const selectedAccountId = await getServerSelectedAccountId(
-    getServerAuthToken,
-    accounts,
-  );
+  const selectedAccountId = await getServerSelectedAccountId(accounts);
 
   try {
     const tradesResponse = await listTrades(getServerAuthToken, {

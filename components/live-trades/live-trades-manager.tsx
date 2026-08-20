@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
 import { PageHeader } from "@/components/layout/page-header";
@@ -113,6 +113,7 @@ export function LiveTradesManager({
     new Date().toISOString(),
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const fetchInFlightRef = useRef(false);
 
   const accountOptions = useMemo(
     () => [
@@ -147,6 +148,12 @@ export function LiveTradesManager({
 
   const refreshLiveTrades = useCallback(
     async (options?: { silent?: boolean }) => {
+      if (fetchInFlightRef.current) {
+        return;
+      }
+
+      fetchInFlightRef.current = true;
+
       if (!options?.silent) {
         setIsRefreshing(true);
       }
@@ -167,6 +174,7 @@ export function LiveTradesManager({
           );
         }
       } finally {
+        fetchInFlightRef.current = false;
         if (!options?.silent) {
           setIsRefreshing(false);
         }
@@ -178,16 +186,19 @@ export function LiveTradesManager({
   useEffect(() => {
     if (!isReady) return;
 
-    void refreshLiveTrades({ silent: true });
-  }, [accountId, isReady, refreshLiveTrades]);
+    const timeoutId = window.setTimeout(() => {
+      void refreshLiveTrades({ silent: true });
+    }, 0);
 
-  useEffect(() => {
     const intervalId = window.setInterval(() => {
       void refreshLiveTrades({ silent: true });
     }, LIVE_TRADES_POLL_INTERVAL_MS);
 
-    return () => window.clearInterval(intervalId);
-  }, [refreshLiveTrades]);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
+  }, [accountId, isReady, refreshLiveTrades]);
 
   useInitialPersistedAccountLoad(
     isReady,

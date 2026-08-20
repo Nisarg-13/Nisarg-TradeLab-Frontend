@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { TradeStatusBadge } from "@/components/trades/trade-status-badge";
+import { formatTradeHoldingDuration } from "@/lib/formatting/datetime";
 import { formatTradePrice } from "@/lib/formatting/trade-price";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
@@ -85,7 +86,7 @@ export function TradesTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
+      <table className="w-full min-w-[860px] text-sm">
         <thead>
           <tr className="text-muted-foreground border-b text-left text-[11px] tracking-wide uppercase">
             {selectable ? (
@@ -111,6 +112,7 @@ export function TradesTable({
             <th className="pr-4 pb-3 font-medium">Side</th>
             <th className="pr-4 pb-3 font-medium">Entry</th>
             <th className="pr-4 pb-3 font-medium">Exit</th>
+            <th className="pr-4 pb-3 font-medium">Duration</th>
             <th className="pr-4 pb-3 font-medium">PnL</th>
             <th className="pb-3 font-medium">Status</th>
           </tr>
@@ -166,6 +168,13 @@ export function TradesTable({
                 </td>
                 <td className="tabular-data text-muted-foreground py-3.5 pr-4">
                   {isOpen ? "—" : formatTradePrice(trade.averageExitPrice)}
+                </td>
+                <td className="text-muted-foreground py-3.5 pr-4 whitespace-nowrap">
+                  {formatTradeHoldingDuration(
+                    trade.openedAt,
+                    trade.closedAt,
+                    trade.status,
+                  )}
                 </td>
                 <td
                   className={cn(

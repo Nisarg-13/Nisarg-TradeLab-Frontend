@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatWinRateSampleHint } from "@/lib/analytics/sample-confidence";
 import { formatMoney } from "@/lib/formatting/currency";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
@@ -217,7 +218,10 @@ export function DashboardSummaryCards({
       <SummaryCard
         label="Win rate"
         value={formatPercent(summary.winRate)}
-        hint={`Sample: ${summary.sampleConfidence.replaceAll("_", " ")}`}
+        hint={formatWinRateSampleHint(
+          summary.closedTradeCount,
+          summary.sampleConfidence,
+        )}
       />
       <SummaryCard label="Profit factor" value={summary.profitFactor ?? "—"} />
       <SummaryCard

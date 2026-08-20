@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatSampleConfidenceLabel } from "@/lib/analytics/sample-confidence";
 import { formatMoney } from "@/lib/formatting/currency";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
@@ -73,8 +74,8 @@ export function MetricsGroupsTable({
                       ? formatMoney(row.moneyExpectancy, currency)
                       : "—"}
                   </td>
-                  <td className="text-muted-foreground py-3 text-xs uppercase">
-                    {row.sampleConfidence.replaceAll("_", " ")}
+                  <td className="text-muted-foreground py-3 text-xs">
+                    {formatSampleConfidenceLabel(row.sampleConfidence)}
                   </td>
                 </tr>
               ))}

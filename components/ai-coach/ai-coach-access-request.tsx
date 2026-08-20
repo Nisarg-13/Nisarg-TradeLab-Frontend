@@ -20,6 +20,9 @@ const INSIGHT_POINTS = [
   "Process experiments for your next trades",
 ] as const;
 
+const AI_COACH_CONTACT_EMAIL =
+  process.env.NEXT_PUBLIC_AI_COACH_CONTACT_EMAIL?.trim() ?? "";
+
 export function AiCoachAccessRequest() {
   return (
     <div className="space-y-8">
@@ -48,14 +51,23 @@ export function AiCoachAccessRequest() {
             price predictions.
           </p>
           <p className="text-sm leading-relaxed">
-            To request access, email{" "}
-            <a
-              href="mailto:patelnisarg1309@gmail.com?subject=TradeLab%20AI%20Coach%20Access%20Request"
-              className="text-primary font-medium hover:underline"
-            >
-              patelnisarg1309@gmail.com
-            </a>{" "}
-            from the address linked to your TradeLab account.
+            {AI_COACH_CONTACT_EMAIL ? (
+              <>
+                To request access, email{" "}
+                <a
+                  href={`mailto:${AI_COACH_CONTACT_EMAIL}?subject=TradeLab%20AI%20Coach%20Access%20Request`}
+                  className="text-primary font-medium hover:underline"
+                >
+                  {AI_COACH_CONTACT_EMAIL}
+                </a>{" "}
+                from the address linked to your TradeLab account.
+              </>
+            ) : (
+              <>
+                To request access, contact the TradeLab administrator from the
+                email address linked to your account.
+              </>
+            )}
           </p>
         </CardContent>
       </Card>

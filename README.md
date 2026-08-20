@@ -5,9 +5,11 @@
 > Frontend repository for **Nisarg’s TradeLab**, a personal trading journal, risk-management, analytics, MT5-sync, and AI-assisted performance platform.
 
 **Frontend repository:** https://github.com/Nisarg-13/Nisarg-TradeLab-Frontend  
-**Backend repository:** FastAPI backend (`Nisarg-TradeLab-Backend-FastAPI`) — production API on FastAPI Cloud
+**Backend repository:** https://github.com/Nisarg-13/Nisarg-TradeLab-Backend-FastAPI (FastAPI, production)
 
 > The legacy NestJS backend is retired. All API calls go to the FastAPI backend.
+
+**Security:** See [SECURITY.md](./SECURITY.md) for vulnerability reporting and secret-handling guidelines.
 
 ---
 
@@ -285,23 +287,34 @@ The API layer should handle:
 
 ## 9. Environment Variables
 
-Create `.env.example`.
+Copy `.env.example` to `.env.local` for local development.
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/dashboard
+NEXT_PUBLIC_AI_COACH_CONTACT_EMAIL=
 ```
 
-Do not put backend secrets in this repository.
+Do not put backend-only secrets in this repository.
 
-Never expose:
+Never expose in client code or commit to git:
 
 ```text
 DATABASE_URL
-CLERK_SECRET_KEY
+OPENAI_API_KEY
 GEMINI_API_KEY
 MT5_CONNECTION_TOKEN_SECRET
+BLOB_READ_WRITE_TOKEN
 ```
+
+`CLERK_SECRET_KEY` is for Next.js server components only — never prefix with `NEXT_PUBLIC_`.
+
+See [SECURITY.md](./SECURITY.md).
 
 ---
 
@@ -1151,7 +1164,7 @@ Read README.md completely.
 This repository is Nisarg-TradeLab-Frontend.
 
 The backend is a separate repository:
-https://github.com/Nisarg-13/Nisarg-TradeLab-Backend
+https://github.com/Nisarg-13/Nisarg-TradeLab-Backend-FastAPI
 
 Do not implement backend code here.
 

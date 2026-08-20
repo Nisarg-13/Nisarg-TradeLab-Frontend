@@ -90,17 +90,20 @@ function resolveAccountBalances(summary: AnalyticsSummary) {
   const starting = startingBalance ?? "0.00";
   const current = currentBalance ?? "0.00";
   const hasSyncedBalance = Number(starting) > 0 && Number(current) > 0;
+  const hasOpenTrades = summary.openTradeCount > 0;
   const accountPnl = hasSyncedBalance
     ? Number(current) - Number(starting)
     : realizedNetPnl;
-  const unrealizedPnl = hasSyncedBalance
-    ? accountPnl - realizedNetPnl
-    : Number(summary.unrealizedPnl ?? 0);
+  const unrealizedPnl =
+    hasSyncedBalance && hasOpenTrades
+      ? accountPnl - realizedNetPnl
+      : Number(summary.unrealizedPnl ?? 0);
 
   return {
     startingBalance: starting,
     currentBalance: current,
     hasSyncedBalance,
+    hasOpenTrades,
     accountPnl: hasSyncedBalance
       ? accountPnl.toFixed(2)
       : (summary.accountPnl ?? summary.netPnl),
@@ -114,6 +117,7 @@ function buildNetPnlHint(
   summary: AnalyticsSummary,
   currency: string,
   hasSyncedBalance: boolean,
+  hasOpenTrades: boolean,
   unrealizedPnl: string,
 ) {
   const parts = [
@@ -122,7 +126,11 @@ function buildNetPnlHint(
     summary.breakevenCount > 0 ? `${summary.breakevenCount}BE` : null,
   ];
 
-  if (hasSyncedBalance && Math.abs(Number(unrealizedPnl)) >= 0.01) {
+  if (
+    hasSyncedBalance &&
+    hasOpenTrades &&
+    Math.abs(Number(unrealizedPnl)) >= 0.01
+  ) {
     parts.push(
       `${formatMoney(summary.netPnl, currency)} realized`,
       `${formatMoney(unrealizedPnl, currency)} open`,
@@ -177,6 +185,7 @@ export function DashboardSummaryCards({
     startingBalance,
     currentBalance,
     hasSyncedBalance,
+    hasOpenTrades,
     accountPnl,
     unrealizedPnl,
   } = resolveAccountBalances(summary);
@@ -191,6 +200,7 @@ export function DashboardSummaryCards({
           summary,
           currency,
           hasSyncedBalance,
+          hasOpenTrades,
           unrealizedPnl,
         )}
         valueClassName={pnlTextClass(accountPnl)}

@@ -58,7 +58,7 @@ export function DashboardManager({
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const getAuthToken = useClientAuthToken();
-  const { format: formatDateTime } = useFormatDateTime();
+  const { formatApp } = useFormatDateTime();
   const displayName =
     user?.fullName ??
     user?.firstName ??
@@ -170,7 +170,7 @@ export function DashboardManager({
         title="Live positions"
         description={
           lastMt5SnapshotAt
-            ? `Open journal positions with MT5 live pricing. MT5 data last received ${formatDateTime(lastMt5SnapshotAt)}.`
+            ? `Open journal positions with MT5 live pricing. MT5 data last received ${formatApp(lastMt5SnapshotAt)}.`
             : "Open journal positions with MT5 live pricing when sync is active."
         }
       />

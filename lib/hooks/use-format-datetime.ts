@@ -4,6 +4,7 @@ import { useCallback } from "react";
 
 import { useTimezone } from "@/components/providers/timezone-provider";
 import {
+  formatAppDateTime,
   formatDateTime,
   formatDateTimeWithSeconds,
 } from "@/lib/formatting/datetime";
@@ -22,9 +23,15 @@ export function useFormatDateTime() {
     [timezone],
   );
 
+  const formatApp = useCallback(
+    (value: string | null | undefined) => formatAppDateTime(value, timezone),
+    [timezone],
+  );
+
   return {
     timezone,
     format,
+    formatApp,
     formatWithSeconds,
   };
 }

@@ -44,9 +44,11 @@ function liveStatusTone(status: LiveDataStatus) {
 function ConnectionStatusCard({
   liveStatus,
   connections,
+  formatAppDateTime,
 }: {
   liveStatus: LiveDataStatus;
   connections: LiveTradeConnection[];
+  formatAppDateTime: (value: string | null | undefined) => string;
 }) {
   return (
     <Card>
@@ -83,13 +85,13 @@ function ConnectionStatusCard({
               <p className="text-muted-foreground mt-1 text-xs">
                 Last heartbeat:{" "}
                 {connection.lastHeartbeatAt
-                  ? new Date(connection.lastHeartbeatAt).toLocaleString()
+                  ? formatAppDateTime(connection.lastHeartbeatAt)
                   : "Never"}
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
                 Last price snapshot:{" "}
                 {connection.lastSnapshotAt
-                  ? new Date(connection.lastSnapshotAt).toLocaleString()
+                  ? formatAppDateTime(connection.lastSnapshotAt)
                   : "Never"}
               </p>
             </div>
@@ -107,7 +109,7 @@ export function LiveTradesManager({
   accounts: TradingAccount[];
   initialData: LiveTradesResponse;
 }) {
-  const { format: formatDateTime } = useFormatDateTime();
+  const { formatApp } = useFormatDateTime();
   const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
 
   const {
@@ -154,10 +156,10 @@ export function LiveTradesManager({
           />
           <p className="text-muted-foreground text-xs">
             MT5 data last received{" "}
-            {lastMt5SnapshotAt ? formatDateTime(lastMt5SnapshotAt) : "never"}.
-            UI refetches every {pollIntervalSeconds}s
+            {lastMt5SnapshotAt ? formatApp(lastMt5SnapshotAt) : "never"}. UI
+            refetches every {pollIntervalSeconds}s
             {lastRefreshedAt
-              ? ` · last UI refresh ${formatDateTime(lastRefreshedAt)}`
+              ? ` · last UI refresh ${formatApp(lastRefreshedAt)}`
               : ""}
             .
           </p>
@@ -186,6 +188,7 @@ export function LiveTradesManager({
       <ConnectionStatusCard
         liveStatus={data.liveStatus}
         connections={filteredConnections}
+        formatAppDateTime={formatApp}
       />
 
       {isRefreshing && positions.length === 0 ? (

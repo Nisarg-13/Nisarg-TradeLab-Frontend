@@ -1,9 +1,17 @@
+import { formatClockPeriod, formatClockTime } from "@/lib/constants/timezones";
 import type { TradeStatus } from "@/types/trade";
 
 type DateTimeStyleOptions = {
   dateStyle?: "full" | "long" | "medium" | "short";
   timeStyle?: "full" | "long" | "medium" | "short";
 };
+
+const HAS_TIMEZONE_SUFFIX = /(?:Z|[+-]\d{2}:\d{2})$/;
+
+export function parseApiDateTime(value: string) {
+  const normalized = HAS_TIMEZONE_SUFFIX.test(value) ? value : `${value}Z`;
+  return new Date(normalized);
+}
 
 export function formatDateTime(
   value: string | null | undefined,
@@ -17,7 +25,7 @@ export function formatDateTime(
     return "—";
   }
 
-  const date = new Date(value);
+  const date = parseApiDateTime(value);
 
   if (Number.isNaN(date.getTime())) {
     return "—";
@@ -27,6 +35,33 @@ export function formatDateTime(
     ...options,
     timeZone,
   }).format(date);
+}
+
+/** Date + 24h clock time with AM/PM period — matches the app header clock. */
+export function formatAppDateTime(
+  value: string | null | undefined,
+  timeZone: string,
+) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = parseApiDateTime(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  const datePart = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeZone,
+  }).format(date);
+  const timePart = formatClockTime(date, timeZone);
+  const period = formatClockPeriod(date, timeZone);
+
+  return period
+    ? `${datePart}, ${timePart} ${period}`
+    : `${datePart}, ${timePart}`;
 }
 
 export function formatDateTimeWithSeconds(

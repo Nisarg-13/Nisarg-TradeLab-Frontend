@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { BulkJournalPanel } from "@/components/trades/bulk-journal-panel";
 import { TradesTable } from "@/components/trades/trades-table";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -25,6 +26,7 @@ import {
 } from "@/lib/hooks/use-persisted-account-id";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
+import type { Mistake, Strategy, Tag } from "@/types/strategy";
 import type { Trade, TradeStatus } from "@/types/trade";
 import type { TradeDirection } from "@/types/risk";
 
@@ -54,6 +56,9 @@ export function TradesManager({
   initialTrades,
   initialMeta,
   accounts,
+  strategies,
+  tags,
+  mistakes,
 }: {
   initialTrades: Trade[];
   initialMeta: {
@@ -63,6 +68,9 @@ export function TradesManager({
     totalPages: number;
   };
   accounts: TradingAccount[];
+  strategies: Strategy[];
+  tags: Tag[];
+  mistakes: Mistake[];
 }) {
   const getAuthToken = useClientAuthToken();
   const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
@@ -78,6 +86,12 @@ export function TradesManager({
   >("openedAt_desc");
   const [page, setPage] = useState(initialMeta.page);
   const [pageSize, setPageSize] = useState(initialMeta.limit || 10);
+  const [selectedTradeIds, setSelectedTradeIds] = useState<string[]>([]);
+  const [showBulkJournal, setShowBulkJournal] = useState(false);
+
+  const selectedTrades = trades.filter((trade) =>
+    selectedTradeIds.includes(trade.id),
+  );
 
   const accountOptions = [
     { value: "", label: "All accounts" },
@@ -106,6 +120,11 @@ export function TradesManager({
         setMeta(response.meta);
         setPage(response.meta.page);
         setPageSize(response.meta.limit);
+        setSelectedTradeIds((current) =>
+          current.filter((id) =>
+            response.data.some((trade) => trade.id === id),
+          ),
+        );
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Failed to load trades.",
@@ -218,10 +237,45 @@ export function TradesManager({
             <CardTitle>All trades</CardTitle>
             <CardDescription className="mt-1">
               {meta.total} trade{meta.total === 1 ? "" : "s"} total
+              {selectedTradeIds.length > 0
+                ? ` · ${selectedTradeIds.length} selected`
+                : ""}
             </CardDescription>
           </div>
+          {selectedTradeIds.length > 0 ? (
+            <div className="flex shrink-0 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSelectedTradeIds([]);
+                  setShowBulkJournal(false);
+                }}
+              >
+                Clear selection
+              </Button>
+              <Button type="button" onClick={() => setShowBulkJournal(true)}>
+                Edit journal
+              </Button>
+            </div>
+          ) : null}
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
+          {showBulkJournal && selectedTradeIds.length > 0 ? (
+            <BulkJournalPanel
+              selectedTradeIds={selectedTradeIds}
+              selectedSymbols={selectedTrades.map((trade) => trade.symbol)}
+              strategies={strategies}
+              tags={tags}
+              mistakes={mistakes}
+              onSaved={() => {
+                setSelectedTradeIds([]);
+                setShowBulkJournal(false);
+              }}
+              onCancel={() => setShowBulkJournal(false)}
+            />
+          ) : null}
+
           {isLoading ? (
             <p className="text-muted-foreground text-sm">Loading trades...</p>
           ) : (
@@ -229,6 +283,9 @@ export function TradesManager({
               trades={trades}
               showAccount={!accountId}
               emptyMessage="No trades match these filters."
+              selectable
+              selectedTradeIds={selectedTradeIds}
+              onSelectedTradeIdsChange={setSelectedTradeIds}
             />
           )}
 

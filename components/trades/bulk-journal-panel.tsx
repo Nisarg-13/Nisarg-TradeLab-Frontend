@@ -12,55 +12,59 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { updateTrade } from "@/lib/api/trades";
+import { bulkUpdateTradeJournal } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
 import {
   buildJournalUpdateInput,
-  toJournalValues,
+  EMPTY_JOURNAL_FORM,
 } from "@/lib/journal/trade-journal";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
-import type { Trade } from "@/types/trade";
 
-export function TradeJournalCard({
-  trade,
+export function BulkJournalPanel({
+  selectedTradeIds,
+  selectedSymbols,
   strategies,
   tags,
   mistakes,
-  onUpdated,
+  onSaved,
+  onCancel,
 }: {
-  trade: Trade;
+  selectedTradeIds: string[];
+  selectedSymbols: string[];
   strategies: Strategy[];
   tags: Tag[];
   mistakes: Mistake[];
-  onUpdated: (trade: Trade) => void;
+  onSaved: () => void;
+  onCancel: () => void;
 }) {
   const getAuthToken = useClientAuthToken();
   const [isSaving, setIsSaving] = useState(false);
-  const [values, setValues] = useState(() => toJournalValues(trade.review));
+  const [values, setValues] = useState(EMPTY_JOURNAL_FORM.values);
   const [planCompliance, setPlanCompliance] = useState(
-    trade.review?.planCompliance ?? "",
+    EMPTY_JOURNAL_FORM.planCompliance,
   );
-  const [selectedStrategyIds, setSelectedStrategyIds] = useState(() =>
-    trade.strategies.map((strategy) => strategy.id),
+  const [selectedStrategyIds, setSelectedStrategyIds] = useState<string[]>(
+    EMPTY_JOURNAL_FORM.strategyIds,
   );
-  const [selectedTagIds, setSelectedTagIds] = useState(() =>
-    trade.tags.map((tag) => tag.id),
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    EMPTY_JOURNAL_FORM.tagIds,
   );
-  const [selectedMistakeIds, setSelectedMistakeIds] = useState(() =>
-    trade.mistakes.map((mistake) => mistake.id),
+  const [selectedMistakeIds, setSelectedMistakeIds] = useState<string[]>(
+    EMPTY_JOURNAL_FORM.mistakeIds,
   );
   const [chartTimeframe, setChartTimeframe] = useState(
-    trade.chartTimeframe ?? "",
+    EMPTY_JOURNAL_FORM.chartTimeframe,
   );
+
+  const uniqueSymbols = [...new Set(selectedSymbols)];
 
   async function handleSave() {
     setIsSaving(true);
 
     try {
-      const response = await updateTrade(
-        getAuthToken,
-        trade.id,
-        buildJournalUpdateInput({
+      const response = await bulkUpdateTradeJournal(getAuthToken, {
+        tradeIds: selectedTradeIds,
+        ...buildJournalUpdateInput({
           chartTimeframe,
           strategyIds: selectedStrategyIds,
           tagIds: selectedTagIds,
@@ -68,15 +72,17 @@ export function TradeJournalCard({
           values,
           planCompliance,
         }),
-      );
+      });
 
-      toast.success("Trade journal saved.");
-      onUpdated(response.data);
+      toast.success(
+        `Journal saved for ${response.meta.updated} trade${response.meta.updated === 1 ? "" : "s"}.`,
+      );
+      onSaved();
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to save trade journal.",
+          : "Failed to save journal for selected trades.",
       );
     } finally {
       setIsSaving(false);
@@ -84,26 +90,33 @@ export function TradeJournalCard({
   }
 
   return (
-    <Card>
+    <Card className="border-primary/30">
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <CardTitle>Trade journal</CardTitle>
+          <CardTitle>Bulk journal edit</CardTitle>
           <CardDescription>
-            Capture strategies, entry criteria, mistakes, market read, plan,
-            confidence, and review for this trade.
+            Apply the same journal details to {selectedTradeIds.length} selected
+            trade{selectedTradeIds.length === 1 ? "" : "s"}
+            {uniqueSymbols.length > 0 ? ` (${uniqueSymbols.join(", ")})` : ""}.
+            This replaces existing journal details on each selected trade.
           </CardDescription>
         </div>
-        <Button
-          type="button"
-          disabled={isSaving}
-          onClick={() => void handleSave()}
-        >
-          {isSaving ? "Saving..." : "Save journal"}
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={isSaving}
+            onClick={() => void handleSave()}
+          >
+            {isSaving ? "Saving..." : "Apply to selected"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <TradeJournalFormFields
-          idPrefix="trade"
+          idPrefix="bulk"
           strategies={strategies}
           tags={tags}
           mistakes={mistakes}

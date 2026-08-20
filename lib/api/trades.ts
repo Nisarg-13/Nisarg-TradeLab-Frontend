@@ -2,6 +2,7 @@ import { apiRequest } from "./client";
 import type {
   AddExecutionInput,
   ApiDataResponse,
+  BulkUpdateTradeJournalInput,
   CloseTradeInput,
   CreateTradeInput,
   ListTradesQuery,
@@ -117,4 +118,18 @@ export async function updateTradeReview(
       getAuthToken,
     },
   );
+}
+
+export async function bulkUpdateTradeJournal(
+  getAuthToken: () => Promise<string | null>,
+  input: BulkUpdateTradeJournalInput,
+) {
+  return apiRequest<{
+    data: Trade[];
+    meta: { updated: number };
+  }>("/api/v1/trades/bulk-journal", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+    getAuthToken,
+  });
 }

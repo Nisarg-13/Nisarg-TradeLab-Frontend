@@ -174,6 +174,10 @@ export type UpdateTradeInput = {
   review?: TradeReviewInput;
 };
 
+export type BulkUpdateTradeJournalInput = {
+  tradeIds: string[];
+} & UpdateTradeInput;
+
 export type AddExecutionInput = {
   type: ExecutionType;
   price: number;

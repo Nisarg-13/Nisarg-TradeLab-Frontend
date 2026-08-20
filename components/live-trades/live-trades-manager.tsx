@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useMemo } from "react";
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +15,8 @@ import {
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Label } from "@/components/ui/label";
 import { TableSkeleton } from "@/components/ui/skeleton";
-import { getLiveTrades } from "@/lib/api/live-trades";
-import { useClientAuthToken } from "@/lib/auth/client";
+import { LIVE_TRADES_POLL_INTERVAL_MS } from "@/lib/live-trades/constants";
+import { useLiveTradesRefresh } from "@/lib/hooks/use-live-trades-refresh";
 import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
@@ -28,11 +27,8 @@ import type { TradingAccount } from "@/types/account";
 import type {
   LiveDataStatus,
   LiveTradeConnection,
-  LiveTradePosition,
   LiveTradesResponse,
 } from "@/types/live-trades";
-
-const LIVE_TRADES_POLL_INTERVAL_MS = 1_000;
 
 function liveStatusTone(status: LiveDataStatus) {
   switch (status) {
@@ -111,15 +107,22 @@ export function LiveTradesManager({
   accounts: TradingAccount[];
   initialData: LiveTradesResponse;
 }) {
-  const getAuthToken = useClientAuthToken();
   const { format: formatDateTime } = useFormatDateTime();
   const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
-  const [data, setData] = useState(initialData);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(
-    new Date().toISOString(),
-  );
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const fetchInFlightRef = useRef(false);
+
+  const {
+    data,
+    positions,
+    filteredConnections,
+    lastRefreshedAt,
+    lastMt5SnapshotAt,
+    isRefreshing,
+    refreshLiveTrades,
+  } = useLiveTradesRefresh({
+    accountId,
+    initialData,
+    isReady,
+  });
 
   const accountOptions = useMemo(
     () => [
@@ -132,85 +135,13 @@ export function LiveTradesManager({
     [accounts],
   );
 
-  const filteredConnections = useMemo(
-    () =>
-      accountId
-        ? data.connections.filter(
-            (connection) => connection.tradingAccountId === accountId,
-          )
-        : data.connections,
-    [accountId, data.connections],
-  );
-
-  const filteredPositions: LiveTradePosition[] = useMemo(
-    () =>
-      accountId
-        ? data.positions.filter(
-            (position) => position.tradingAccountId === accountId,
-          )
-        : data.positions,
-    [accountId, data.positions],
-  );
-
-  const refreshLiveTrades = useCallback(
-    async (options?: { silent?: boolean }) => {
-      if (fetchInFlightRef.current) {
-        return;
-      }
-
-      fetchInFlightRef.current = true;
-
-      if (!options?.silent) {
-        setIsRefreshing(true);
-      }
-
-      try {
-        const response = await getLiveTrades(getAuthToken, {
-          tradingAccountId: accountId || undefined,
-        });
-
-        setData(response.data);
-        setLastRefreshedAt(new Date().toISOString());
-      } catch (error) {
-        if (!options?.silent) {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Failed to refresh live trades.",
-          );
-        }
-      } finally {
-        fetchInFlightRef.current = false;
-        if (!options?.silent) {
-          setIsRefreshing(false);
-        }
-      }
-    },
-    [accountId, getAuthToken],
-  );
-
-  useEffect(() => {
-    if (!isReady) return;
-
-    const timeoutId = window.setTimeout(() => {
-      void refreshLiveTrades({ silent: true });
-    }, 0);
-
-    const intervalId = window.setInterval(() => {
-      void refreshLiveTrades({ silent: true });
-    }, LIVE_TRADES_POLL_INTERVAL_MS);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      window.clearInterval(intervalId);
-    };
-  }, [accountId, isReady, refreshLiveTrades]);
-
   useInitialPersistedAccountLoad(
     isReady,
     () => refreshLiveTrades(),
     Boolean(accountId),
   );
+
+  const pollIntervalSeconds = LIVE_TRADES_POLL_INTERVAL_MS / 1_000;
 
   return (
     <div className="space-y-6">
@@ -221,11 +152,15 @@ export function LiveTradesManager({
             title="Live trades"
             description="Monitor open positions, floating PnL, and MT5 sync status."
           />
-          {lastRefreshedAt ? (
-            <p className="text-muted-foreground text-xs">
-              Last refreshed {formatDateTime(lastRefreshedAt)}
-            </p>
-          ) : null}
+          <p className="text-muted-foreground text-xs">
+            MT5 data last received{" "}
+            {lastMt5SnapshotAt ? formatDateTime(lastMt5SnapshotAt) : "never"}.
+            UI refetches every {pollIntervalSeconds}s
+            {lastRefreshedAt
+              ? ` · last UI refresh ${formatDateTime(lastRefreshedAt)}`
+              : ""}
+            .
+          </p>
         </div>
         <div className="flex w-full max-w-md flex-col gap-2 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-2">
@@ -253,14 +188,14 @@ export function LiveTradesManager({
         connections={filteredConnections}
       />
 
-      {isRefreshing && filteredPositions.length === 0 ? (
+      {isRefreshing && positions.length === 0 ? (
         <Card>
           <CardContent className="py-6">
             <TableSkeleton rows={4} />
           </CardContent>
         </Card>
       ) : (
-        <OpenPositionsCard positions={filteredPositions} />
+        <OpenPositionsCard positions={positions} />
       )}
 
       {data.liveStatus === "STALE" ? (

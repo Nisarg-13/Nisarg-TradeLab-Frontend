@@ -15,7 +15,6 @@ import {
 } from "@/components/dashboard/performance-tables";
 import { RecentTradesCard } from "@/components/dashboard/recent-trades-card";
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
-import { mapTradeToLivePosition } from "@/lib/live-trades/map";
 import { Button } from "@/components/ui/button";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Label } from "@/components/ui/label";
@@ -26,6 +25,8 @@ import {
 } from "@/lib/api/analytics";
 import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
+import { useLiveTradesRefresh } from "@/lib/hooks/use-live-trades-refresh";
+import { useFormatDateTime } from "@/lib/hooks/use-format-datetime";
 import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
@@ -36,6 +37,7 @@ import type {
   InstrumentPerformance,
   StrategyPerformance,
 } from "@/types/analytics";
+import type { LiveTradesResponse } from "@/types/live-trades";
 import type { Trade } from "@/types/trade";
 
 export function DashboardManager({
@@ -44,18 +46,19 @@ export function DashboardManager({
   initialInstruments,
   initialStrategies,
   initialRecentTrades,
-  openTrades,
+  initialLiveTrades,
 }: {
   accounts: TradingAccount[];
   initialSummary: AnalyticsSummary;
   initialInstruments: InstrumentPerformance[];
   initialStrategies: StrategyPerformance[];
   initialRecentTrades: Trade[];
-  openTrades: Trade[];
+  initialLiveTrades: LiveTradesResponse;
 }) {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const getAuthToken = useClientAuthToken();
+  const { format: formatDateTime } = useFormatDateTime();
   const displayName =
     user?.fullName ??
     user?.firstName ??
@@ -65,9 +68,16 @@ export function DashboardManager({
   const [summary, setSummary] = useState(initialSummary);
   const [instruments, setInstruments] = useState(initialInstruments);
   const [strategies, setStrategies] = useState(initialStrategies);
-  const [positions, setPositions] = useState(openTrades);
   const [recentTrades, setRecentTrades] = useState(initialRecentTrades);
   const [isLoading, setIsLoading] = useState(false);
+
+  const { positions, lastMt5SnapshotAt, refreshLiveTrades } =
+    useLiveTradesRefresh({
+      accountId,
+      initialData: initialLiveTrades,
+      isReady,
+      limit: 5,
+    });
 
   const accountOptions = [
     { value: "", label: "All accounts" },
@@ -86,18 +96,11 @@ export function DashboardManager({
         summaryResponse,
         instrumentsResponse,
         strategiesResponse,
-        openTradesResponse,
         recentTradesResponse,
       ] = await Promise.all([
         getAnalyticsSummary(getAuthToken, query),
         getInstrumentPerformance(getAuthToken, query),
         getStrategyPerformance(getAuthToken, query),
-        listTrades(getAuthToken, {
-          status: "OPEN",
-          limit: 5,
-          sort: "openedAt_desc",
-          ...query,
-        }),
         listTrades(getAuthToken, {
           limit: 5,
           sort: "openedAt_desc",
@@ -108,8 +111,8 @@ export function DashboardManager({
       setSummary(summaryResponse.data);
       setInstruments(instrumentsResponse.data);
       setStrategies(strategiesResponse.data);
-      setPositions(openTradesResponse.data);
       setRecentTrades(recentTradesResponse.data);
+      await refreshLiveTrades({ silent: true });
       router.refresh();
     } catch (err) {
       toast.error(
@@ -118,7 +121,7 @@ export function DashboardManager({
     } finally {
       setIsLoading(false);
     }
-  }, [accountId, getAuthToken, router]);
+  }, [accountId, getAuthToken, refreshLiveTrades, router]);
 
   useInitialPersistedAccountLoad(
     isReady,
@@ -162,10 +165,14 @@ export function DashboardManager({
       <DashboardSummaryCards summary={summary} />
 
       <OpenPositionsCard
-        positions={positions.map(mapTradeToLivePosition)}
+        positions={positions}
         showViewAll
         title="Live positions"
-        description="Open journal positions with MT5 live pricing when sync is active."
+        description={
+          lastMt5SnapshotAt
+            ? `Open journal positions with MT5 live pricing. MT5 data last received ${formatDateTime(lastMt5SnapshotAt)}.`
+            : "Open journal positions with MT5 live pricing when sync is active."
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">

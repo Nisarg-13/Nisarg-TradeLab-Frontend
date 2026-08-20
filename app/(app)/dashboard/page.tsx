@@ -5,6 +5,7 @@ import {
   getInstrumentPerformance,
   getStrategyPerformance,
 } from "@/lib/api/analytics";
+import { getLiveTrades } from "@/lib/api/live-trades";
 import { listTrades } from "@/lib/api/trades";
 import { getServerAuthToken } from "@/lib/auth/server";
 import { getServerAppContext } from "@/lib/server/app-context";
@@ -12,7 +13,14 @@ import type {
   InstrumentPerformance,
   StrategyPerformance,
 } from "@/types/analytics";
+import type { LiveTradesResponse } from "@/types/live-trades";
 import type { Trade } from "@/types/trade";
+
+const EMPTY_LIVE_TRADES: LiveTradesResponse = {
+  liveStatus: "DISCONNECTED",
+  connections: [],
+  positions: [],
+};
 
 export default async function DashboardPage() {
   const { accounts, query } = await getServerAppContext();
@@ -22,7 +30,7 @@ export default async function DashboardPage() {
     instrumentsResult,
     strategiesResult,
     recentTradesResult,
-    openTradesResult,
+    liveTradesResult,
   ] = await Promise.all([
     getAnalyticsSummary(getServerAuthToken, query)
       .then((response) => response.data)
@@ -40,14 +48,9 @@ export default async function DashboardPage() {
     })
       .then((response) => response.data)
       .catch(() => [] as Trade[]),
-    listTrades(getServerAuthToken, {
-      status: "OPEN",
-      limit: 5,
-      sort: "openedAt_desc",
-      ...query,
-    })
+    getLiveTrades(getServerAuthToken, query)
       .then((response) => response.data)
-      .catch(() => [] as Trade[]),
+      .catch(() => EMPTY_LIVE_TRADES),
   ]);
 
   return (
@@ -57,7 +60,7 @@ export default async function DashboardPage() {
       initialInstruments={instrumentsResult}
       initialStrategies={strategiesResult}
       initialRecentTrades={recentTradesResult}
-      openTrades={openTradesResult}
+      initialLiveTrades={liveTradesResult}
     />
   );
 }

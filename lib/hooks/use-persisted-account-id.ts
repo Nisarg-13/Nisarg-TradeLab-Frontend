@@ -11,10 +11,20 @@ import {
 
 let cachedAccountId: string | null | undefined;
 
+export function seedPersistedAccountId(accountId: string) {
+  if (cachedAccountId === undefined) {
+    cachedAccountId = accountId;
+  }
+}
+
 export function usePersistedAccountId(accounts: Array<{ id: string }>) {
   const getAuthToken = useClientAuthToken();
-  const [accountId, setAccountIdState] = useState("");
-  const [isReady, setIsReady] = useState(false);
+  const [accountId, setAccountIdState] = useState(() =>
+    cachedAccountId !== undefined
+      ? resolveAccountIdForAccounts(cachedAccountId ?? "", accounts)
+      : "",
+  );
+  const [isReady, setIsReady] = useState(cachedAccountId !== undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,6 +36,7 @@ export function usePersistedAccountId(accounts: Array<{ id: string }>) {
             setAccountIdState(
               resolveAccountIdForAccounts(cachedAccountId ?? "", accounts),
             );
+            setIsReady(true);
           }
           return;
         }
@@ -77,11 +88,18 @@ export function usePersistedAccountId(accounts: Array<{ id: string }>) {
   return { accountId, setAccountId, isReady };
 }
 
+type InitialPersistedAccountLoadOptions = {
+  enabled?: boolean;
+  /** When true, server already fetched data for the current account. */
+  skip?: boolean;
+};
+
 export function useInitialPersistedAccountLoad(
   isReady: boolean,
   onLoad: () => void | Promise<void>,
-  enabled = true,
+  options: InitialPersistedAccountLoadOptions = {},
 ) {
+  const { enabled = true, skip = false } = options;
   const onLoadRef = useRef(onLoad);
   const didLoadRef = useRef(false);
 
@@ -90,11 +108,16 @@ export function useInitialPersistedAccountLoad(
   }, [onLoad]);
 
   useEffect(() => {
+    if (skip) {
+      didLoadRef.current = true;
+      return;
+    }
+
     if (!enabled || !isReady || didLoadRef.current) {
       return;
     }
 
     didLoadRef.current = true;
     void onLoadRef.current();
-  }, [enabled, isReady]);
+  }, [enabled, isReady, skip]);
 }

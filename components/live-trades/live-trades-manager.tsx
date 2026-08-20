@@ -21,6 +21,7 @@ import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
 } from "@/lib/hooks/use-persisted-account-id";
+import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import { useFormatDateTime } from "@/lib/hooks/use-format-datetime";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
@@ -104,9 +105,11 @@ function ConnectionStatusCard({
 
 export function LiveTradesManager({
   accounts,
+  serverSelectedAccountId = "",
   initialData,
 }: {
   accounts: TradingAccount[];
+  serverSelectedAccountId?: string;
   initialData: LiveTradesResponse;
 }) {
   const { formatApp } = useFormatDateTime();
@@ -124,6 +127,10 @@ export function LiveTradesManager({
     accountId,
     initialData,
     isReady,
+    skipInitialRefresh: shouldSkipServerMatchedAccountLoad(
+      accountId,
+      serverSelectedAccountId,
+    ),
   });
 
   const accountOptions = useMemo(
@@ -137,11 +144,13 @@ export function LiveTradesManager({
     [accounts],
   );
 
-  useInitialPersistedAccountLoad(
-    isReady,
-    () => refreshLiveTrades(),
-    Boolean(accountId),
-  );
+  useInitialPersistedAccountLoad(isReady, () => refreshLiveTrades(), {
+    enabled: Boolean(accountId),
+    skip: shouldSkipServerMatchedAccountLoad(
+      accountId,
+      serverSelectedAccountId,
+    ),
+  });
 
   const pollIntervalSeconds = LIVE_TRADES_POLL_INTERVAL_MS / 1_000;
 

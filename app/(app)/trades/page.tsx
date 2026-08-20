@@ -7,7 +7,7 @@ import type { Mistake, Strategy, Tag } from "@/types/strategy";
 import type { Trade } from "@/types/trade";
 
 export default async function TradesPage() {
-  const { accounts, query } = await getServerAppContext();
+  const { accounts, selectedAccountId, query } = await getServerAppContext();
 
   const [tradesResult, strategiesResult, tagsResult, mistakesResult] =
     await Promise.all([
@@ -40,6 +40,7 @@ export default async function TradesPage() {
       initialTrades={tradesResult.trades}
       initialMeta={tradesResult.meta}
       accounts={accounts}
+      serverSelectedAccountId={selectedAccountId ?? ""}
       strategies={strategiesResult}
       tags={tagsResult}
       mistakes={mistakesResult}

@@ -12,7 +12,7 @@ const EMPTY_LIVE_TRADES: LiveTradesResponse = {
 };
 
 export default async function LiveTradesPage() {
-  const { accounts, query } = await getServerAppContext();
+  const { accounts, selectedAccountId, query } = await getServerAppContext();
 
   const liveTrades = await getLiveTrades(getServerAuthToken, query)
     .then((response) => response.data)
@@ -20,7 +20,11 @@ export default async function LiveTradesPage() {
 
   return (
     <ErrorBoundary fallbackTitle="Live trades failed to load">
-      <LiveTradesManager accounts={accounts} initialData={liveTrades} />
+      <LiveTradesManager
+        accounts={accounts}
+        serverSelectedAccountId={selectedAccountId ?? ""}
+        initialData={liveTrades}
+      />
     </ErrorBoundary>
   );
 }

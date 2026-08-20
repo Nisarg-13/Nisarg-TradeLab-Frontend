@@ -14,5 +14,11 @@ export default async function DailyJournalPage() {
     .then((response) => response.data)
     .catch(() => [] as DailyJournal[]);
 
-  return <DailyJournalManager accounts={accounts} initialEntries={entries} />;
+  return (
+    <DailyJournalManager
+      accounts={accounts}
+      serverSelectedAccountId={selectedAccountId ?? ""}
+      initialEntries={entries}
+    />
+  );
 }

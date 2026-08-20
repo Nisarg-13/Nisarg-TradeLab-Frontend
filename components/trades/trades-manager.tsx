@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
+import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
@@ -95,6 +96,7 @@ export function TradesManager({
   initialTrades,
   initialMeta,
   accounts,
+  serverSelectedAccountId = "",
   strategies,
   tags,
   mistakes,
@@ -107,6 +109,7 @@ export function TradesManager({
     totalPages: number;
   };
   accounts: TradingAccount[];
+  serverSelectedAccountId?: string;
   strategies: Strategy[];
   tags: Tag[];
   mistakes: Mistake[];
@@ -194,8 +197,21 @@ export function TradesManager({
     const initialFilters = { ...EMPTY_FILTERS, accountId };
     setAppliedFilters(initialFilters);
     setDraftFilters(initialFilters);
-    void loadTrades(1, PAGE_SIZE, initialFilters);
-  }, [accountId, isReady, loadTrades]);
+
+    if (
+      shouldSkipServerMatchedAccountLoad(accountId, serverSelectedAccountId)
+    ) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void loadTrades(1, PAGE_SIZE, initialFilters);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [accountId, isReady, loadTrades, serverSelectedAccountId]);
 
   function openFilters() {
     setDraftFilters(appliedFilters);

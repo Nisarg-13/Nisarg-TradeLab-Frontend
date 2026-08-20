@@ -27,6 +27,7 @@ import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
 } from "@/lib/hooks/use-persisted-account-id";
+import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import type { TradingAccount } from "@/types/account";
 import type {
   DailyJournal,
@@ -73,9 +74,11 @@ function formatEntryTitle(entry: DailyJournal) {
 
 export function DailyJournalManager({
   accounts,
+  serverSelectedAccountId = "",
   initialEntries,
 }: {
   accounts: TradingAccount[];
+  serverSelectedAccountId?: string;
   initialEntries: DailyJournal[];
 }) {
   const getAuthToken = useClientAuthToken();
@@ -138,7 +141,13 @@ export function DailyJournalManager({
       const refreshed = await refreshEntries(accountId);
       setSelectedEntryId(refreshed[0]?.id ?? null);
     },
-    Boolean(accountId),
+    {
+      enabled: Boolean(accountId),
+      skip: shouldSkipServerMatchedAccountLoad(
+        accountId,
+        serverSelectedAccountId,
+      ),
+    },
   );
 
   const selectedEntry =

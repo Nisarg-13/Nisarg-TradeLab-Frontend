@@ -61,10 +61,12 @@ import {
   parseAnalyticsQuery,
   serializeAnalyticsTab,
 } from "@/lib/analytics/query-state";
+import { loadSecondaryAnalytics } from "@/lib/analytics/load-secondary-analytics";
 import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
 } from "@/lib/hooks/use-persisted-account-id";
+import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type {
@@ -117,6 +119,7 @@ type AnalyticsTab = (typeof TABS)[number]["id"];
 
 export function AnalyticsManager({
   accounts,
+  serverSelectedAccountId = "",
   strategies,
   tags,
   mistakes,
@@ -142,8 +145,10 @@ export function AnalyticsManager({
   initialExecution,
   initialEdgeFinder,
   initialInsights,
+  deferSecondaryLoad = false,
 }: {
   accounts: TradingAccount[];
+  serverSelectedAccountId?: string;
   strategies: Strategy[];
   tags: Tag[];
   mistakes: Mistake[];
@@ -169,6 +174,7 @@ export function AnalyticsManager({
   initialExecution: ExecutionAnalytics;
   initialEdgeFinder: EdgeFinderAnalytics;
   initialInsights: InsightsAnalytics;
+  deferSecondaryLoad?: boolean;
 }) {
   const getAuthToken = useClientAuthToken();
   const router = useRouter();
@@ -182,6 +188,7 @@ export function AnalyticsManager({
     [searchParams],
   );
   const hasHydratedFilters = useRef(false);
+  const secondaryLoadedRef = useRef(!deferSecondaryLoad);
   const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
   const [activeTab, setActiveTab] = useState<AnalyticsTab>(
     TABS.some((tab) => tab.id === initialTab) ? initialTab : "overview",
@@ -382,11 +389,75 @@ export function AnalyticsManager({
     await loadAnalytics();
   }
 
-  useInitialPersistedAccountLoad(
-    isReady,
-    () => loadAnalytics(),
-    Boolean(accountId),
-  );
+  useInitialPersistedAccountLoad(isReady, () => loadAnalytics(), {
+    enabled: Boolean(accountId),
+    skip: shouldSkipServerMatchedAccountLoad(
+      accountId,
+      serverSelectedAccountId,
+    ),
+  });
+
+  useEffect(() => {
+    if (!deferSecondaryLoad || !isReady || secondaryLoadedRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSecondary = async () => {
+      try {
+        const secondary = await loadSecondaryAnalytics(
+          getAuthToken,
+          queryFilters,
+          heatmapMetric,
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setInstruments(secondary.instruments);
+        setStrategyRows(secondary.strategyRows);
+        setRiskStats(secondary.riskStats);
+        setTimeAnalytics(secondary.timeAnalytics);
+        setHeatmapCells(secondary.heatmapCells);
+        setPsychology(secondary.psychology);
+        setMistakeAnalytics(secondary.mistakeAnalytics);
+        setDurationAnalytics(secondary.durationAnalytics);
+        setRolling(secondary.rolling);
+        setComparison(secondary.comparison);
+        setDirectionAnalytics(secondary.directionAnalytics);
+        setBehaviorAnalytics(secondary.behaviorAnalytics);
+        setTagAnalytics(secondary.tagAnalytics);
+        setPlannedRrAnalytics(secondary.plannedRrAnalytics);
+        setConcentrationAnalytics(secondary.concentrationAnalytics);
+        setExecutionAnalytics(secondary.executionAnalytics);
+        setEdgeFinderAnalytics(secondary.edgeFinderAnalytics);
+        setInsightsAnalytics(secondary.insightsAnalytics);
+        secondaryLoadedRef.current = true;
+      } catch {
+        // Overview remains usable; secondary tabs retry on next filter apply.
+      }
+    };
+
+    const schedule =
+      typeof window.requestIdleCallback === "function"
+        ? window.requestIdleCallback
+        : (callback: IdleRequestCallback) => window.setTimeout(callback, 0);
+
+    const idleId = schedule(() => {
+      void loadSecondary();
+    });
+
+    return () => {
+      cancelled = true;
+      if (typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
+    };
+  }, [deferSecondaryLoad, getAuthToken, heatmapMetric, isReady, queryFilters]);
 
   const mistakeRows = useMemo(
     () =>

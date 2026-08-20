@@ -1,1 +1,1 @@
-export const LIVE_TRADES_POLL_INTERVAL_MS = 1_000;
+export const LIVE_TRADES_POLL_INTERVAL_MS = 3_000;

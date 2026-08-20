@@ -1,0 +1,92 @@
+import type { HeatmapMetric } from "@/types/analytics";
+
+import {
+  getBehaviorAnalytics,
+  getConcentrationAnalytics,
+  getDirectionAnalytics,
+  getDurationAnalytics,
+  getEdgeFinderAnalytics,
+  getExecutionAnalytics,
+  getHeatmapAnalytics,
+  getInsightsAnalytics,
+  getInstrumentPerformance,
+  getMistakeAnalytics,
+  getPeriodComparison,
+  getPlannedRrAnalytics,
+  getPsychologyAnalytics,
+  getRiskStats,
+  getRollingPerformance,
+  getStrategyPerformance,
+  getTagAnalytics,
+  getTimeAnalytics,
+} from "@/lib/api/analytics";
+import type { AnalyticsQuery } from "@/types/analytics";
+
+type AuthTokenGetter = () => Promise<string | null>;
+
+export async function loadSecondaryAnalytics(
+  getAuthToken: AuthTokenGetter,
+  query: AnalyticsQuery,
+  heatmapMetric: HeatmapMetric,
+) {
+  const [
+    instrumentsResponse,
+    strategiesResponse,
+    riskStatsResponse,
+    timeResponse,
+    heatmapResponse,
+    psychologyResponse,
+    mistakesResponse,
+    durationResponse,
+    rollingResponse,
+    comparisonResponse,
+    directionResponse,
+    behaviorResponse,
+    tagsResponse,
+    plannedRrResponse,
+    concentrationResponse,
+    executionResponse,
+    edgeFinderResponse,
+    insightsResponse,
+  ] = await Promise.all([
+    getInstrumentPerformance(getAuthToken, query),
+    getStrategyPerformance(getAuthToken, query),
+    getRiskStats(getAuthToken, query),
+    getTimeAnalytics(getAuthToken, query),
+    getHeatmapAnalytics(getAuthToken, query, heatmapMetric),
+    getPsychologyAnalytics(getAuthToken, query),
+    getMistakeAnalytics(getAuthToken, query),
+    getDurationAnalytics(getAuthToken, query),
+    getRollingPerformance(getAuthToken, query),
+    getPeriodComparison(getAuthToken, query),
+    getDirectionAnalytics(getAuthToken, query),
+    getBehaviorAnalytics(getAuthToken, query),
+    getTagAnalytics(getAuthToken, query),
+    getPlannedRrAnalytics(getAuthToken, query),
+    getConcentrationAnalytics(getAuthToken, query),
+    getExecutionAnalytics(getAuthToken, query),
+    getEdgeFinderAnalytics(getAuthToken, query),
+    getInsightsAnalytics(getAuthToken, query),
+  ]);
+
+  return {
+    instruments: instrumentsResponse.data,
+    strategyRows: strategiesResponse.data,
+    riskStats: riskStatsResponse.data,
+    timeAnalytics: timeResponse.data,
+    heatmapCells: heatmapResponse.data.cells,
+    psychology: psychologyResponse.data,
+    mistakeAnalytics: mistakesResponse.data,
+    durationAnalytics: durationResponse.data,
+    rolling: rollingResponse.data,
+    comparison: comparisonResponse.data,
+    directionAnalytics: directionResponse.data,
+    behaviorAnalytics: behaviorResponse.data,
+    tagAnalytics: tagsResponse.data,
+    plannedRrAnalytics: plannedRrResponse.data,
+    concentrationAnalytics: concentrationResponse.data,
+    executionAnalytics: executionResponse.data,
+    edgeFinderAnalytics: edgeFinderResponse.data,
+    insightsAnalytics: insightsResponse.data,
+  };
+}

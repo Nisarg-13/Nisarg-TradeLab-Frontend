@@ -23,7 +23,7 @@ const EMPTY_LIVE_TRADES: LiveTradesResponse = {
 };
 
 export default async function DashboardPage() {
-  const { accounts, query } = await getServerAppContext();
+  const { accounts, selectedAccountId, query } = await getServerAppContext();
 
   const [
     summaryResult,
@@ -56,6 +56,7 @@ export default async function DashboardPage() {
   return (
     <DashboardManager
       accounts={accounts}
+      serverSelectedAccountId={selectedAccountId ?? ""}
       initialSummary={summaryResult}
       initialInstruments={instrumentsResult}
       initialStrategies={strategiesResult}

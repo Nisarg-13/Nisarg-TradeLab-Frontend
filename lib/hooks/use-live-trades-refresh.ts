@@ -17,19 +17,20 @@ export function useLiveTradesRefresh({
   initialData,
   isReady,
   limit,
+  skipInitialRefresh = false,
 }: {
   accountId: string;
   initialData: LiveTradesResponse;
   isReady: boolean;
   limit?: number;
+  skipInitialRefresh?: boolean;
 }) {
   const getAuthToken = useClientAuthToken();
   const [data, setData] = useState(initialData);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(
-    new Date().toISOString(),
-  );
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const fetchInFlightRef = useRef(false);
+  const skipInitialRefreshRef = useRef(skipInitialRefresh);
 
   const filteredConnections = accountId
     ? data.connections.filter(
@@ -88,17 +89,47 @@ export function useLiveTradesRefresh({
   useEffect(() => {
     if (!isReady) return;
 
-    const timeoutId = window.setTimeout(() => {
-      void refreshLiveTrades({ silent: true });
-    }, 0);
+    let intervalId: number | undefined;
 
-    const intervalId = window.setInterval(() => {
+    const startPolling = () => {
+      if (intervalId !== undefined) {
+        return;
+      }
+
+      intervalId = window.setInterval(() => {
+        if (document.visibilityState === "visible") {
+          void refreshLiveTrades({ silent: true });
+        }
+      }, LIVE_TRADES_POLL_INTERVAL_MS);
+    };
+
+    const stopPolling = () => {
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId);
+        intervalId = undefined;
+      }
+    };
+
+    if (!skipInitialRefreshRef.current) {
       void refreshLiveTrades({ silent: true });
-    }, LIVE_TRADES_POLL_INTERVAL_MS);
+    }
+
+    startPolling();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refreshLiveTrades({ silent: true });
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      window.clearTimeout(timeoutId);
-      window.clearInterval(intervalId);
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [accountId, isReady, refreshLiveTrades]);
 

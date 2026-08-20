@@ -1,7 +1,6 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
@@ -31,6 +30,7 @@ import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
 } from "@/lib/hooks/use-persisted-account-id";
+import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import type { TradingAccount } from "@/types/account";
 import type {
   AnalyticsSummary,
@@ -42,6 +42,7 @@ import type { Trade } from "@/types/trade";
 
 export function DashboardManager({
   accounts,
+  serverSelectedAccountId = "",
   initialSummary,
   initialInstruments,
   initialStrategies,
@@ -49,13 +50,13 @@ export function DashboardManager({
   initialLiveTrades,
 }: {
   accounts: TradingAccount[];
+  serverSelectedAccountId?: string;
   initialSummary: AnalyticsSummary;
   initialInstruments: InstrumentPerformance[];
   initialStrategies: StrategyPerformance[];
   initialRecentTrades: Trade[];
   initialLiveTrades: LiveTradesResponse;
 }) {
-  const router = useRouter();
   const { user, isLoaded } = useUser();
   const getAuthToken = useClientAuthToken();
   const { formatApp } = useFormatDateTime();
@@ -77,6 +78,10 @@ export function DashboardManager({
       initialData: initialLiveTrades,
       isReady,
       limit: 5,
+      skipInitialRefresh: shouldSkipServerMatchedAccountLoad(
+        accountId,
+        serverSelectedAccountId,
+      ),
     });
 
   const accountOptions = [
@@ -113,7 +118,6 @@ export function DashboardManager({
       setStrategies(strategiesResponse.data);
       setRecentTrades(recentTradesResponse.data);
       await refreshLiveTrades({ silent: true });
-      router.refresh();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to refresh dashboard.",
@@ -121,13 +125,15 @@ export function DashboardManager({
     } finally {
       setIsLoading(false);
     }
-  }, [accountId, getAuthToken, refreshLiveTrades, router]);
+  }, [accountId, getAuthToken, refreshLiveTrades]);
 
-  useInitialPersistedAccountLoad(
-    isReady,
-    () => handleApplyFilter(),
-    Boolean(accountId),
-  );
+  useInitialPersistedAccountLoad(isReady, () => handleApplyFilter(), {
+    enabled: Boolean(accountId),
+    skip: shouldSkipServerMatchedAccountLoad(
+      accountId,
+      serverSelectedAccountId,
+    ),
+  });
 
   return (
     <div className="space-y-6">

@@ -14,11 +14,13 @@ export function SidebarNavLink({
 }: AppNavItem & { onClick?: () => void }) {
   const pathname = usePathname();
   const isActive = pathname === href || pathname.startsWith(`${href}/`);
+  const isHeavyRoute =
+    href === "/analytics/overview" || href === "/live-trades";
 
   return (
     <Link
       href={href}
-      prefetch
+      prefetch={!isHeavyRoute}
       onClick={onClick}
       className={cn(
         "flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm transition-colors",

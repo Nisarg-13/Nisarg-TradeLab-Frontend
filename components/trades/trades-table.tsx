@@ -3,11 +3,12 @@
 import Link from "next/link";
 
 import { TradeStatusBadge } from "@/components/trades/trade-status-badge";
+import { SortableTableHeader } from "@/components/trades/sortable-table-header";
 import { formatTradeHoldingDuration } from "@/lib/formatting/datetime";
 import { formatTradePrice } from "@/lib/formatting/trade-price";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
-import type { Trade } from "@/types/trade";
+import type { Trade, TradeSort } from "@/types/trade";
 import type { TradeDirection } from "@/types/risk";
 
 function formatSignedPnl(value: string, currency: string) {
@@ -36,6 +37,9 @@ export function TradesTable({
   selectable = false,
   selectedTradeIds = [],
   onSelectedTradeIdsChange,
+  sortable = false,
+  sort = "openedAt_desc",
+  onSortChange,
 }: {
   trades: Trade[];
   showAccount?: boolean;
@@ -43,6 +47,9 @@ export function TradesTable({
   selectable?: boolean;
   selectedTradeIds?: string[];
   onSelectedTradeIdsChange?: (tradeIds: string[]) => void;
+  sortable?: boolean;
+  sort?: TradeSort;
+  onSortChange?: (sort: TradeSort) => void;
 }) {
   if (trades.length === 0) {
     return <p className="text-muted-foreground text-sm">{emptyMessage}</p>;
@@ -109,11 +116,38 @@ export function TradesTable({
             {showAccount ? (
               <th className="pr-4 pb-3 font-medium">Account</th>
             ) : null}
-            <th className="pr-4 pb-3 font-medium">Side</th>
+            {sortable && onSortChange ? (
+              <SortableTableHeader
+                label="Side"
+                column="direction"
+                sort={sort}
+                onSortChange={onSortChange}
+              />
+            ) : (
+              <th className="pr-4 pb-3 font-medium">Side</th>
+            )}
             <th className="pr-4 pb-3 font-medium">Entry</th>
             <th className="pr-4 pb-3 font-medium">Exit</th>
-            <th className="pr-4 pb-3 font-medium">Duration</th>
-            <th className="pr-4 pb-3 font-medium">PnL</th>
+            {sortable && onSortChange ? (
+              <SortableTableHeader
+                label="Duration"
+                column="duration"
+                sort={sort}
+                onSortChange={onSortChange}
+              />
+            ) : (
+              <th className="pr-4 pb-3 font-medium">Duration</th>
+            )}
+            {sortable && onSortChange ? (
+              <SortableTableHeader
+                label="PnL"
+                column="netPnl"
+                sort={sort}
+                onSortChange={onSortChange}
+              />
+            ) : (
+              <th className="pr-4 pb-3 font-medium">PnL</th>
+            )}
             <th className="pb-3 font-medium">Status</th>
           </tr>
         </thead>

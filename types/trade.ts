@@ -196,6 +196,16 @@ export type CloseTradeInput = {
   executedAt?: string;
 };
 
+export type TradeSort =
+  | "openedAt_desc"
+  | "openedAt_asc"
+  | "netPnl_desc"
+  | "netPnl_asc"
+  | "duration_desc"
+  | "duration_asc"
+  | "direction_desc"
+  | "direction_asc";
+
 export type ListTradesQuery = {
   tradingAccountId?: string;
   symbol?: string;
@@ -205,7 +215,7 @@ export type ListTradesQuery = {
   openedTo?: string;
   page?: number;
   limit?: number;
-  sort?: "openedAt_desc" | "openedAt_asc" | "netPnl_desc" | "netPnl_asc";
+  sort?: TradeSort;
 };
 
 export type PaginatedTradesResponse = {

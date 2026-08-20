@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
-import type { Trade, TradeStatus } from "@/types/trade";
+import type { Trade, TradeSort, TradeStatus } from "@/types/trade";
 import type { TradeDirection } from "@/types/risk";
 
 const STATUS_OPTIONS = [
@@ -45,11 +45,15 @@ const DIRECTION_OPTIONS = [
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
 
-const SORT_OPTIONS = [
+const SORT_OPTIONS: Array<{ value: TradeSort; label: string }> = [
   { value: "openedAt_desc", label: "Newest first" },
   { value: "openedAt_asc", label: "Oldest first" },
   { value: "netPnl_desc", label: "Highest PnL" },
   { value: "netPnl_asc", label: "Lowest PnL" },
+  { value: "duration_desc", label: "Longest duration" },
+  { value: "duration_asc", label: "Shortest duration" },
+  { value: "direction_asc", label: "Long first" },
+  { value: "direction_desc", label: "Short first" },
 ];
 
 export function TradesManager({
@@ -81,9 +85,7 @@ export function TradesManager({
   const [symbol, setSymbol] = useState("");
   const [status, setStatus] = useState<TradeStatus | "">("");
   const [direction, setDirection] = useState<TradeDirection | "">("");
-  const [sort, setSort] = useState<
-    "openedAt_desc" | "openedAt_asc" | "netPnl_desc" | "netPnl_asc"
-  >("openedAt_desc");
+  const [sort, setSort] = useState<TradeSort>("openedAt_desc");
   const [page, setPage] = useState(initialMeta.page);
   const [pageSize, setPageSize] = useState(initialMeta.limit || 10);
   const [selectedTradeIds, setSelectedTradeIds] = useState<string[]>([]);
@@ -102,14 +104,18 @@ export function TradesManager({
   ];
 
   const loadTrades = useCallback(
-    async (nextPage = page, nextLimit = pageSize) => {
+    async (
+      nextPage = page,
+      nextLimit = pageSize,
+      nextSort: TradeSort = sort,
+    ) => {
       setIsLoading(true);
 
       try {
         const response = await listTrades(getAuthToken, {
           page: nextPage,
           limit: nextLimit,
-          sort,
+          sort: nextSort,
           ...(accountId ? { tradingAccountId: accountId } : {}),
           ...(symbol ? { symbol: symbol.toUpperCase() } : {}),
           ...(status ? { status } : {}),
@@ -120,6 +126,7 @@ export function TradesManager({
         setMeta(response.meta);
         setPage(response.meta.page);
         setPageSize(response.meta.limit);
+        setSort(nextSort);
         setSelectedTradeIds((current) =>
           current.filter((id) =>
             response.data.some((trade) => trade.id === id),
@@ -141,6 +148,10 @@ export function TradesManager({
     () => loadTrades(1),
     Boolean(accountId),
   );
+
+  function handleSortChange(nextSort: TradeSort) {
+    void loadTrades(1, pageSize, nextSort);
+  }
 
   return (
     <div className="space-y-6">
@@ -208,15 +219,7 @@ export function TradesManager({
               name="filter-sort"
               options={SORT_OPTIONS}
               value={sort}
-              onValueChange={(value) =>
-                setSort(
-                  value as
-                    | "openedAt_desc"
-                    | "openedAt_asc"
-                    | "netPnl_desc"
-                    | "netPnl_asc",
-                )
-              }
+              onValueChange={(value) => setSort(value as TradeSort)}
             />
           </div>
           <div className="flex items-end">
@@ -286,6 +289,9 @@ export function TradesManager({
               selectable
               selectedTradeIds={selectedTradeIds}
               onSelectedTradeIdsChange={setSelectedTradeIds}
+              sortable
+              sort={sort}
+              onSortChange={handleSortChange}
             />
           )}
 

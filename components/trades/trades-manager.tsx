@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -20,10 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
-import {
-  useInitialPersistedAccountLoad,
-  usePersistedAccountId,
-} from "@/lib/hooks/use-persisted-account-id";
+import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
@@ -43,7 +41,7 @@ const DIRECTION_OPTIONS = [
   { value: "SHORT", label: "Short" },
 ];
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+const PAGE_SIZE = 50;
 
 const SORT_OPTIONS: Array<{ value: TradeSort; label: string }> = [
   { value: "openedAt_desc", label: "Newest first" },
@@ -55,6 +53,44 @@ const SORT_OPTIONS: Array<{ value: TradeSort; label: string }> = [
   { value: "direction_asc", label: "Long first" },
   { value: "direction_desc", label: "Short first" },
 ];
+
+type TradeListFilters = {
+  accountId: string;
+  symbol: string;
+  status: TradeStatus | "";
+  direction: TradeDirection | "";
+  sort: TradeSort;
+};
+
+const EMPTY_FILTERS: TradeListFilters = {
+  accountId: "",
+  symbol: "",
+  status: "",
+  direction: "",
+  sort: "openedAt_desc",
+};
+
+function countActiveFilters(filters: TradeListFilters) {
+  let count = 0;
+
+  if (filters.accountId) {
+    count += 1;
+  }
+
+  if (filters.symbol.trim()) {
+    count += 1;
+  }
+
+  if (filters.status) {
+    count += 1;
+  }
+
+  if (filters.direction) {
+    count += 1;
+  }
+
+  return count;
+}
 
 export function TradesManager({
   initialTrades,
@@ -81,13 +117,15 @@ export function TradesManager({
   const [trades, setTrades] = useState(initialTrades);
   const [meta, setMeta] = useState(initialMeta);
   const [isLoading, setIsLoading] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] =
+    useState<TradeListFilters>(EMPTY_FILTERS);
+  const [draftFilters, setDraftFilters] =
+    useState<TradeListFilters>(EMPTY_FILTERS);
+  const didInitializeRef = useRef(false);
 
-  const [symbol, setSymbol] = useState("");
-  const [status, setStatus] = useState<TradeStatus | "">("");
-  const [direction, setDirection] = useState<TradeDirection | "">("");
-  const [sort, setSort] = useState<TradeSort>("openedAt_desc");
   const [page, setPage] = useState(initialMeta.page);
-  const [pageSize, setPageSize] = useState(initialMeta.limit || 10);
+  const [pageSize] = useState(PAGE_SIZE);
   const [selectedTradeIds, setSelectedTradeIds] = useState<string[]>([]);
   const [showBulkJournal, setShowBulkJournal] = useState(false);
 
@@ -107,7 +145,7 @@ export function TradesManager({
     async (
       nextPage = page,
       nextLimit = pageSize,
-      nextSort: TradeSort = sort,
+      nextFilters: TradeListFilters = appliedFilters,
     ) => {
       setIsLoading(true);
 
@@ -115,18 +153,23 @@ export function TradesManager({
         const response = await listTrades(getAuthToken, {
           page: nextPage,
           limit: nextLimit,
-          sort: nextSort,
-          ...(accountId ? { tradingAccountId: accountId } : {}),
-          ...(symbol ? { symbol: symbol.toUpperCase() } : {}),
-          ...(status ? { status } : {}),
-          ...(direction ? { direction } : {}),
+          sort: nextFilters.sort,
+          ...(nextFilters.accountId
+            ? { tradingAccountId: nextFilters.accountId }
+            : {}),
+          ...(nextFilters.symbol
+            ? { symbol: nextFilters.symbol.toUpperCase() }
+            : {}),
+          ...(nextFilters.status ? { status: nextFilters.status } : {}),
+          ...(nextFilters.direction
+            ? { direction: nextFilters.direction }
+            : {}),
         });
 
         setTrades(response.data);
         setMeta(response.meta);
         setPage(response.meta.page);
-        setPageSize(response.meta.limit);
-        setSort(nextSort);
+        setAppliedFilters(nextFilters);
         setSelectedTradeIds((current) =>
           current.filter((id) =>
             response.data.some((trade) => trade.id === id),
@@ -140,18 +183,49 @@ export function TradesManager({
         setIsLoading(false);
       }
     },
-    [accountId, direction, getAuthToken, page, pageSize, sort, status, symbol],
+    [appliedFilters, getAuthToken, page, pageSize],
   );
 
-  useInitialPersistedAccountLoad(
-    isReady,
-    () => loadTrades(1),
-    Boolean(accountId),
-  );
+  useEffect(() => {
+    if (!isReady || didInitializeRef.current) {
+      return;
+    }
+
+    didInitializeRef.current = true;
+    const initialFilters = { ...EMPTY_FILTERS, accountId };
+    setAppliedFilters(initialFilters);
+    setDraftFilters(initialFilters);
+    void loadTrades(1, PAGE_SIZE, initialFilters);
+  }, [accountId, isReady, loadTrades]);
+
+  function openFilters() {
+    setDraftFilters(appliedFilters);
+    setFiltersOpen(true);
+  }
+
+  function applyFilters() {
+    if (draftFilters.accountId !== accountId) {
+      setAccountId(draftFilters.accountId);
+    }
+
+    setFiltersOpen(false);
+    void loadTrades(1, pageSize, draftFilters);
+  }
+
+  function clearFilters() {
+    const cleared = { ...EMPTY_FILTERS, accountId };
+    setDraftFilters(cleared);
+    setAppliedFilters(cleared);
+    setFiltersOpen(false);
+    void loadTrades(1, pageSize, cleared);
+  }
 
   function handleSortChange(nextSort: TradeSort) {
-    void loadTrades(1, pageSize, nextSort);
+    const nextFilters = { ...appliedFilters, sort: nextSort };
+    void loadTrades(1, pageSize, nextFilters);
   }
+
+  const activeFilterCount = countActiveFilters(appliedFilters);
 
   return (
     <div className="space-y-6">
@@ -166,75 +240,6 @@ export function TradesManager({
       </PageHeader>
 
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>Refine the trade list.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="filter-account">Account</Label>
-            <DropdownSelect
-              id="filter-account"
-              name="filter-account"
-              options={accountOptions}
-              value={accountId}
-              onValueChange={setAccountId}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="filter-symbol">Symbol</Label>
-            <Input
-              id="filter-symbol"
-              placeholder="EUR/USD"
-              value={symbol}
-              onChange={(event) => setSymbol(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="filter-status">Status</Label>
-            <DropdownSelect
-              id="filter-status"
-              name="filter-status"
-              options={STATUS_OPTIONS}
-              value={status}
-              onValueChange={(value) => setStatus(value as TradeStatus | "")}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="filter-direction">Direction</Label>
-            <DropdownSelect
-              id="filter-direction"
-              name="filter-direction"
-              options={DIRECTION_OPTIONS}
-              value={direction}
-              onValueChange={(value) =>
-                setDirection(value as TradeDirection | "")
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="filter-sort">Sort</Label>
-            <DropdownSelect
-              id="filter-sort"
-              name="filter-sort"
-              options={SORT_OPTIONS}
-              value={sort}
-              onValueChange={(value) => setSort(value as TradeSort)}
-            />
-          </div>
-          <div className="flex items-end">
-            <Button
-              type="button"
-              disabled={isLoading}
-              onClick={() => void loadTrades(1)}
-            >
-              {isLoading ? "Loading..." : "Apply filters"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3 pb-4">
           <div>
             <CardTitle>All trades</CardTitle>
@@ -243,26 +248,141 @@ export function TradesManager({
               {selectedTradeIds.length > 0
                 ? ` · ${selectedTradeIds.length} selected`
                 : ""}
+              {activeFilterCount > 0
+                ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} active`
+                : ""}
             </CardDescription>
           </div>
-          {selectedTradeIds.length > 0 ? (
-            <div className="flex shrink-0 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setSelectedTradeIds([]);
-                  setShowBulkJournal(false);
-                }}
-              >
-                Clear selection
-              </Button>
-              <Button type="button" onClick={() => setShowBulkJournal(true)}>
-                Edit journal
-              </Button>
-            </div>
-          ) : null}
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant={filtersOpen ? "secondary" : "outline"}
+              onClick={() =>
+                filtersOpen ? setFiltersOpen(false) : openFilters()
+              }
+            >
+              <SlidersHorizontal className="size-4" aria-hidden="true" />
+              Filters
+              {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+            </Button>
+            {selectedTradeIds.length > 0 ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedTradeIds([]);
+                    setShowBulkJournal(false);
+                  }}
+                >
+                  Clear selection
+                </Button>
+                <Button type="button" onClick={() => setShowBulkJournal(true)}>
+                  Edit journal
+                </Button>
+              </>
+            ) : null}
+          </div>
         </CardHeader>
+        {filtersOpen ? (
+          <CardContent className="border-b pb-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="filter-account">Account</Label>
+                <DropdownSelect
+                  id="filter-account"
+                  name="filter-account"
+                  options={accountOptions}
+                  value={draftFilters.accountId}
+                  onValueChange={(value) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      accountId: value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filter-symbol">Symbol</Label>
+                <Input
+                  id="filter-symbol"
+                  placeholder="EUR/USD"
+                  value={draftFilters.symbol}
+                  onChange={(event) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      symbol: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filter-status">Status</Label>
+                <DropdownSelect
+                  id="filter-status"
+                  name="filter-status"
+                  options={STATUS_OPTIONS}
+                  value={draftFilters.status}
+                  onValueChange={(value) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      status: value as TradeStatus | "",
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filter-direction">Direction</Label>
+                <DropdownSelect
+                  id="filter-direction"
+                  name="filter-direction"
+                  options={DIRECTION_OPTIONS}
+                  value={draftFilters.direction}
+                  onValueChange={(value) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      direction: value as TradeDirection | "",
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filter-sort">Sort</Label>
+                <DropdownSelect
+                  id="filter-sort"
+                  name="filter-sort"
+                  options={SORT_OPTIONS}
+                  value={draftFilters.sort}
+                  onValueChange={(value) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      sort: value as TradeSort,
+                    }))
+                  }
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => void applyFilters()}
+                >
+                  {isLoading ? "Applying..." : "Apply filters"}
+                </Button>
+                {activeFilterCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isLoading}
+                    onClick={() => void clearFilters()}
+                  >
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </CardContent>
+        ) : null}
         <CardContent className="space-y-4 pt-0">
           {showBulkJournal && selectedTradeIds.length > 0 ? (
             <BulkJournalPanel
@@ -284,47 +404,21 @@ export function TradesManager({
           ) : (
             <TradesTable
               trades={trades}
-              showAccount={!accountId}
+              showAccount={!appliedFilters.accountId}
               emptyMessage="No trades match these filters."
               selectable
               selectedTradeIds={selectedTradeIds}
               onSelectedTradeIdsChange={setSelectedTradeIds}
               sortable
-              sort={sort}
+              sort={appliedFilters.sort}
               onSortChange={handleSortChange}
             />
           )}
 
           <div className="flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground shrink-0 text-sm">
-                Rows per page
-              </span>
-              <div
-                className="bg-muted/40 flex rounded-lg border p-0.5"
-                role="group"
-                aria-label="Rows per page"
-              >
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <Button
-                    key={size}
-                    type="button"
-                    variant={pageSize === size ? "secondary" : "ghost"}
-                    size="sm"
-                    className="h-8 min-w-10 px-3"
-                    disabled={isLoading}
-                    aria-pressed={pageSize === size}
-                    onClick={() => {
-                      if (pageSize !== size) {
-                        void loadTrades(1, size);
-                      }
-                    }}
-                  >
-                    {size}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            <p className="text-muted-foreground text-sm">
+              Showing up to {PAGE_SIZE} trades per page
+            </p>
 
             {meta.totalPages > 1 ? (
               <div className="flex items-center justify-between gap-3 sm:justify-end">

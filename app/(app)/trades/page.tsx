@@ -13,7 +13,7 @@ export default async function TradesPage() {
     await Promise.all([
       listTrades(getServerAuthToken, {
         sort: "openedAt_desc",
-        limit: 10,
+        limit: 50,
         ...query,
       })
         .then((response) => ({
@@ -22,7 +22,7 @@ export default async function TradesPage() {
         }))
         .catch(() => ({
           trades: [] as Trade[],
-          meta: { page: 1, limit: 10, total: 0, totalPages: 1 },
+          meta: { page: 1, limit: 50, total: 0, totalPages: 1 },
         })),
       listStrategies(getServerAuthToken)
         .then((response) => response.data)

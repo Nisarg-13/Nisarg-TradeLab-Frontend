@@ -93,6 +93,41 @@ function resolveAccountBalances(summary: AnalyticsSummary) {
   };
 }
 
+function resolveCurrentStreak(summary: AnalyticsSummary) {
+  if (summary.currentWinningStreak > 0) {
+    const count = summary.currentWinningStreak;
+    const atPersonalBest = count >= summary.longestWinningStreak;
+    return {
+      label: "Current streak",
+      value: `${count} ${count === 1 ? "win" : "wins"}`,
+      hint: atPersonalBest
+        ? "Personal best streak"
+        : `Best streak ${summary.longestWinningStreak} wins`,
+      valueClassName: "text-profit",
+    };
+  }
+
+  if (summary.currentLosingStreak > 0) {
+    const count = summary.currentLosingStreak;
+    return {
+      label: "Current streak",
+      value: `${count} ${count === 1 ? "loss" : "losses"}`,
+      hint: `Best streak ${summary.longestWinningStreak} wins`,
+      valueClassName: "text-loss",
+    };
+  }
+
+  return {
+    label: "Current streak",
+    value: "—",
+    hint:
+      summary.closedTradeCount > 0
+        ? "No active streak"
+        : "Closes a trade to start tracking",
+    valueClassName: "text-muted-foreground",
+  };
+}
+
 export function DashboardSummaryCards({
   summary,
 }: {
@@ -100,6 +135,7 @@ export function DashboardSummaryCards({
 }) {
   const currency = summary.currency;
   const { startingBalance, currentBalance } = resolveAccountBalances(summary);
+  const streak = resolveCurrentStreak(summary);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -131,18 +167,10 @@ export function DashboardSummaryCards({
       />
       <SummaryCard label="Profit factor" value={summary.profitFactor ?? "—"} />
       <SummaryCard
-        label="Expectancy"
-        value={
-          summary.moneyExpectancy
-            ? formatMoney(summary.moneyExpectancy, currency)
-            : "—"
-        }
-        hint={
-          summary.rExpectancy
-            ? `${Number(summary.rExpectancy).toFixed(2)}R per trade`
-            : "Expected $ per closed trade"
-        }
-        valueClassName={pnlTextClass(summary.moneyExpectancy)}
+        label={streak.label}
+        value={streak.value}
+        hint={streak.hint}
+        valueClassName={streak.valueClassName}
       />
     </div>
   );

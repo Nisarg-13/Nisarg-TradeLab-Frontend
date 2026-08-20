@@ -1,13 +1,8 @@
 import { ErrorBoundary } from "@/components/layout/error-boundary";
 import { LiveTradesManager } from "@/components/live-trades/live-trades-manager";
-import { listAccounts } from "@/lib/api/accounts";
 import { getLiveTrades } from "@/lib/api/live-trades";
 import { getServerAuthToken } from "@/lib/auth/server";
-import {
-  buildTradingAccountQuery,
-  getServerSelectedAccountId,
-} from "@/lib/preferences/server-selected-account";
-import type { TradingAccount } from "@/types/account";
+import { getServerAppContext } from "@/lib/server/app-context";
 import type { LiveTradesResponse } from "@/types/live-trades";
 
 const EMPTY_LIVE_TRADES: LiveTradesResponse = {
@@ -17,27 +12,11 @@ const EMPTY_LIVE_TRADES: LiveTradesResponse = {
 };
 
 export default async function LiveTradesPage() {
-  let accounts: TradingAccount[] = [];
-  let liveTrades: LiveTradesResponse = EMPTY_LIVE_TRADES;
+  const { accounts, query } = await getServerAppContext();
 
-  try {
-    const accountsResponse = await listAccounts(getServerAuthToken);
-    accounts = accountsResponse.data;
-  } catch {
-    accounts = [];
-  }
-
-  const selectedAccountId = await getServerSelectedAccountId(accounts);
-
-  try {
-    const liveTradesResponse = await getLiveTrades(
-      getServerAuthToken,
-      buildTradingAccountQuery(selectedAccountId),
-    );
-    liveTrades = liveTradesResponse.data;
-  } catch {
-    liveTrades = EMPTY_LIVE_TRADES;
-  }
+  const liveTrades = await getLiveTrades(getServerAuthToken, query)
+    .then((response) => response.data)
+    .catch(() => EMPTY_LIVE_TRADES);
 
   return (
     <ErrorBoundary fallbackTitle="Live trades failed to load">

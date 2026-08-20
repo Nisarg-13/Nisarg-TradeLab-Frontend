@@ -1,17 +1,65 @@
-import { AiCoachShowcase } from "@/components/landing/ai-coach-showcase";
-import { AnalyticsShowcase } from "@/components/landing/analytics-showcase";
-import { FeatureGrid } from "@/components/landing/feature-grid";
-import { FinalCta } from "@/components/landing/final-cta";
+import dynamic from "next/dynamic";
+
 import { HeroSection } from "@/components/landing/hero-section";
-import { HowItWorks } from "@/components/landing/how-it-works";
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingNavbar } from "@/components/landing/landing-navbar";
 import { LandingReveal } from "@/components/landing/landing-reveal";
-import { Mt5Showcase } from "@/components/landing/mt5-showcase";
-import { NoSignalsSection } from "@/components/landing/no-signals-section";
 import { ProductPreview } from "@/components/landing/product-preview";
-import { PsychologyShowcase } from "@/components/landing/psychology-showcase";
-import { RiskShowcase } from "@/components/landing/risk-showcase";
+
+const FeatureGrid = dynamic(
+  () =>
+    import("@/components/landing/feature-grid").then((mod) => mod.FeatureGrid),
+  { loading: () => null },
+);
+const HowItWorks = dynamic(
+  () =>
+    import("@/components/landing/how-it-works").then((mod) => mod.HowItWorks),
+  { loading: () => null },
+);
+const AnalyticsShowcase = dynamic(
+  () =>
+    import("@/components/landing/analytics-showcase").then(
+      (mod) => mod.AnalyticsShowcase,
+    ),
+  { loading: () => null },
+);
+const AiCoachShowcase = dynamic(
+  () =>
+    import("@/components/landing/ai-coach-showcase").then(
+      (mod) => mod.AiCoachShowcase,
+    ),
+  { loading: () => null },
+);
+const RiskShowcase = dynamic(
+  () =>
+    import("@/components/landing/risk-showcase").then(
+      (mod) => mod.RiskShowcase,
+    ),
+  { loading: () => null },
+);
+const Mt5Showcase = dynamic(
+  () =>
+    import("@/components/landing/mt5-showcase").then((mod) => mod.Mt5Showcase),
+  { loading: () => null },
+);
+const PsychologyShowcase = dynamic(
+  () =>
+    import("@/components/landing/psychology-showcase").then(
+      (mod) => mod.PsychologyShowcase,
+    ),
+  { loading: () => null },
+);
+const NoSignalsSection = dynamic(
+  () =>
+    import("@/components/landing/no-signals-section").then(
+      (mod) => mod.NoSignalsSection,
+    ),
+  { loading: () => null },
+);
+const FinalCta = dynamic(
+  () => import("@/components/landing/final-cta").then((mod) => mod.FinalCta),
+  { loading: () => null },
+);
 
 export function LandingPage() {
   return (

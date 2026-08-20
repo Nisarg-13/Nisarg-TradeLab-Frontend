@@ -1,33 +1,18 @@
 import { DailyJournalManager } from "@/components/daily-journal/daily-journal-manager";
-import { listAccounts } from "@/lib/api/accounts";
 import { listDailyJournalEntries } from "@/lib/api/journal";
 import { getServerAuthToken } from "@/lib/auth/server";
-import { getServerSelectedAccountId } from "@/lib/preferences/server-selected-account";
-import type { TradingAccount } from "@/types/account";
+import { getServerAppContext } from "@/lib/server/app-context";
 import type { DailyJournal } from "@/types/journal";
 
 export default async function DailyJournalPage() {
-  let accounts: TradingAccount[] = [];
-  let entries: DailyJournal[] = [];
+  const { accounts, selectedAccountId } = await getServerAppContext();
+  const accountId = selectedAccountId ?? accounts[0]?.id;
 
-  try {
-    const accountsResponse = await listAccounts(getServerAuthToken);
-    accounts = accountsResponse.data;
-  } catch {
-    accounts = [];
-  }
-
-  const selectedAccountId =
-    (await getServerSelectedAccountId(accounts)) ?? accounts[0]?.id;
-
-  try {
-    const entriesResponse = await listDailyJournalEntries(getServerAuthToken, {
-      tradingAccountId: selectedAccountId,
-    });
-    entries = entriesResponse.data;
-  } catch {
-    entries = [];
-  }
+  const entries = await listDailyJournalEntries(getServerAuthToken, {
+    tradingAccountId: accountId,
+  })
+    .then((response) => response.data)
+    .catch(() => [] as DailyJournal[]);
 
   return <DailyJournalManager accounts={accounts} initialEntries={entries} />;
 }

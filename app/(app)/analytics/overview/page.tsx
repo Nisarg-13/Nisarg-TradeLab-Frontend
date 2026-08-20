@@ -12,7 +12,6 @@ import {
   EMPTY_PLANNED_RR_ANALYTICS,
   EMPTY_TAG_ANALYTICS,
 } from "@/lib/analytics/empty-analytics";
-import { listAccounts } from "@/lib/api/accounts";
 import {
   getAnalyticsSummary,
   getBehaviorAnalytics,
@@ -38,27 +37,13 @@ import {
 } from "@/lib/api/analytics";
 import { listMistakes, listStrategies, listTags } from "@/lib/api/strategies";
 import { getServerAuthToken } from "@/lib/auth/server";
-import {
-  buildTradingAccountQuery,
-  getServerSelectedAccountId,
-} from "@/lib/preferences/server-selected-account";
-import type { TradingAccount } from "@/types/account";
+import { getServerAppContext } from "@/lib/server/app-context";
 import type {
-  AnalyticsSummary,
-  HeatmapCell,
   HeatmapMetric,
-  InstrumentPerformance,
-  MistakeAnalyticsGroup,
   PeriodComparison,
-  PlanComplianceGroup,
   PsychologyAnalytics,
-  RiskStatGroup,
   RollingPerformance,
-  SessionPerformance,
-  StrategyPerformance,
   TimeAnalytics,
-  TradeMetricsGroup,
-  InsightsAnalytics,
 } from "@/types/analytics";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
 
@@ -165,150 +150,82 @@ const EMPTY_COMPARISON: PeriodComparison = {
 };
 
 export default async function AnalyticsOverviewPage() {
-  let accounts: TradingAccount[] = [];
-  let strategies: Strategy[] = [];
-  let tags: Tag[] = [];
-  let mistakes: Mistake[] = [];
-  let summary: AnalyticsSummary = EMPTY_ANALYTICS_SUMMARY;
-  let instruments: InstrumentPerformance[] = [];
-  let sessionPerformance: SessionPerformance[] = [];
-  let strategyRows: StrategyPerformance[] = [];
-  let planCompliance: PlanComplianceGroup[] = [];
-  let riskStats: RiskStatGroup[] = [];
-  let timeAnalytics: TimeAnalytics = EMPTY_TIME;
-  let heatmapCells: HeatmapCell[] = [];
   const heatmapMetric: HeatmapMetric = "pnl";
-  let psychology: PsychologyAnalytics = EMPTY_PSYCHOLOGY;
-  let mistakeAnalytics: MistakeAnalyticsGroup[] = [];
-  let durationAnalytics: TradeMetricsGroup[] = [];
-  let rolling: RollingPerformance = EMPTY_ROLLING;
-  let comparison: PeriodComparison = EMPTY_COMPARISON;
-  let directionAnalytics = EMPTY_DIRECTION_ANALYTICS;
-  let behaviorAnalytics = EMPTY_BEHAVIOR_ANALYTICS;
-  let tagAnalytics = EMPTY_TAG_ANALYTICS;
-  let plannedRrAnalytics = EMPTY_PLANNED_RR_ANALYTICS;
-  let concentrationAnalytics = EMPTY_CONCENTRATION_ANALYTICS;
-  let executionAnalytics = EMPTY_EXECUTION_ANALYTICS;
-  let edgeFinderAnalytics = EMPTY_EDGE_FINDER_ANALYTICS;
-  let insightsAnalytics: InsightsAnalytics = EMPTY_INSIGHTS_ANALYTICS;
+  const contextPromise = getServerAppContext();
 
-  try {
-    const accountsResponse = await listAccounts(getServerAuthToken);
-    accounts = accountsResponse.data;
-  } catch {
-    accounts = [];
-  }
-
-  try {
-    const [strategiesResponse, mistakesResponse, tagsResponse] =
-      await Promise.all([
-        listStrategies(getServerAuthToken),
-        listMistakes(getServerAuthToken),
-        listTags(getServerAuthToken),
-      ]);
-    strategies = strategiesResponse.data;
-    mistakes = mistakesResponse.data;
-    tags = tagsResponse.data;
-  } catch {
-    strategies = [];
-    mistakes = [];
-    tags = [];
-  }
-
-  const selectedAccountId = await getServerSelectedAccountId(accounts);
-  const query = buildTradingAccountQuery(selectedAccountId);
-
-  try {
-    const [
-      summaryResponse,
-      instrumentsResponse,
-      sessionPerformanceResponse,
-      strategiesResponse,
-      planComplianceResponse,
-      riskStatsResponse,
-      timeResponse,
-      heatmapResponse,
-      psychologyResponse,
-      mistakesResponse,
-      durationResponse,
-      rollingResponse,
-      comparisonResponse,
-      directionResponse,
-      behaviorResponse,
-      tagsResponse,
-      plannedRrResponse,
-      concentrationResponse,
-      executionResponse,
-      edgeFinderResponse,
-      insightsResponse,
-    ] = await Promise.all([
-      getAnalyticsSummary(getServerAuthToken, query),
-      getInstrumentPerformance(getServerAuthToken, query),
-      getSessionPerformance(getServerAuthToken, query),
-      getStrategyPerformance(getServerAuthToken, query),
-      getPlanCompliance(getServerAuthToken, query),
-      getRiskStats(getServerAuthToken, query),
-      getTimeAnalytics(getServerAuthToken, query),
-      getHeatmapAnalytics(getServerAuthToken, query, heatmapMetric),
-      getPsychologyAnalytics(getServerAuthToken, query),
-      getMistakeAnalytics(getServerAuthToken, query),
-      getDurationAnalytics(getServerAuthToken, query),
-      getRollingPerformance(getServerAuthToken, query),
-      getPeriodComparison(getServerAuthToken, query),
-      getDirectionAnalytics(getServerAuthToken, query),
-      getBehaviorAnalytics(getServerAuthToken, query),
-      getTagAnalytics(getServerAuthToken, query),
-      getPlannedRrAnalytics(getServerAuthToken, query),
-      getConcentrationAnalytics(getServerAuthToken, query),
-      getExecutionAnalytics(getServerAuthToken, query),
-      getEdgeFinderAnalytics(getServerAuthToken, query),
-      getInsightsAnalytics(getServerAuthToken, query),
+  const [{ accounts }, strategies, mistakes, tags, analyticsBundle] =
+    await Promise.all([
+      contextPromise,
+      listStrategies(getServerAuthToken)
+        .then((response) => response.data)
+        .catch(() => [] as Strategy[]),
+      listMistakes(getServerAuthToken)
+        .then((response) => response.data)
+        .catch(() => [] as Mistake[]),
+      listTags(getServerAuthToken)
+        .then((response) => response.data)
+        .catch(() => [] as Tag[]),
+      contextPromise
+        .then(({ query: accountQuery }) =>
+          Promise.all([
+            getAnalyticsSummary(getServerAuthToken, accountQuery),
+            getInstrumentPerformance(getServerAuthToken, accountQuery),
+            getSessionPerformance(getServerAuthToken, accountQuery),
+            getStrategyPerformance(getServerAuthToken, accountQuery),
+            getPlanCompliance(getServerAuthToken, accountQuery),
+            getRiskStats(getServerAuthToken, accountQuery),
+            getTimeAnalytics(getServerAuthToken, accountQuery),
+            getHeatmapAnalytics(
+              getServerAuthToken,
+              accountQuery,
+              heatmapMetric,
+            ),
+            getPsychologyAnalytics(getServerAuthToken, accountQuery),
+            getMistakeAnalytics(getServerAuthToken, accountQuery),
+            getDurationAnalytics(getServerAuthToken, accountQuery),
+            getRollingPerformance(getServerAuthToken, accountQuery),
+            getPeriodComparison(getServerAuthToken, accountQuery),
+            getDirectionAnalytics(getServerAuthToken, accountQuery),
+            getBehaviorAnalytics(getServerAuthToken, accountQuery),
+            getTagAnalytics(getServerAuthToken, accountQuery),
+            getPlannedRrAnalytics(getServerAuthToken, accountQuery),
+            getConcentrationAnalytics(getServerAuthToken, accountQuery),
+            getExecutionAnalytics(getServerAuthToken, accountQuery),
+            getEdgeFinderAnalytics(getServerAuthToken, accountQuery),
+            getInsightsAnalytics(getServerAuthToken, accountQuery),
+          ]),
+        )
+        .catch(() => null),
     ]);
 
-    summary = summaryResponse.data;
-    instruments = instrumentsResponse.data;
-    sessionPerformance = sessionPerformanceResponse.data;
-    strategyRows = strategiesResponse.data;
-    planCompliance = planComplianceResponse.data;
-    riskStats = riskStatsResponse.data;
-    timeAnalytics = timeResponse.data;
-    heatmapCells = heatmapResponse.data.cells;
-    psychology = psychologyResponse.data;
-    mistakeAnalytics = mistakesResponse.data;
-    durationAnalytics = durationResponse.data;
-    rolling = rollingResponse.data;
-    comparison = comparisonResponse.data;
-    directionAnalytics = directionResponse.data;
-    behaviorAnalytics = behaviorResponse.data;
-    tagAnalytics = tagsResponse.data;
-    plannedRrAnalytics = plannedRrResponse.data;
-    concentrationAnalytics = concentrationResponse.data;
-    executionAnalytics = executionResponse.data;
-    edgeFinderAnalytics = edgeFinderResponse.data;
-    insightsAnalytics = insightsResponse.data;
-  } catch {
-    summary = EMPTY_ANALYTICS_SUMMARY;
-    instruments = [];
-    sessionPerformance = [];
-    strategyRows = [];
-    planCompliance = [];
-    riskStats = [];
-    timeAnalytics = EMPTY_TIME;
-    heatmapCells = [];
-    psychology = EMPTY_PSYCHOLOGY;
-    mistakeAnalytics = [];
-    durationAnalytics = [];
-    rolling = EMPTY_ROLLING;
-    comparison = EMPTY_COMPARISON;
-    directionAnalytics = EMPTY_DIRECTION_ANALYTICS;
-    behaviorAnalytics = EMPTY_BEHAVIOR_ANALYTICS;
-    tagAnalytics = EMPTY_TAG_ANALYTICS;
-    plannedRrAnalytics = EMPTY_PLANNED_RR_ANALYTICS;
-    concentrationAnalytics = EMPTY_CONCENTRATION_ANALYTICS;
-    executionAnalytics = EMPTY_EXECUTION_ANALYTICS;
-    edgeFinderAnalytics = EMPTY_EDGE_FINDER_ANALYTICS;
-    insightsAnalytics = EMPTY_INSIGHTS_ANALYTICS;
-  }
+  const summary = analyticsBundle?.[0]?.data ?? EMPTY_ANALYTICS_SUMMARY;
+  const instruments = analyticsBundle?.[1]?.data ?? [];
+  const sessionPerformance = analyticsBundle?.[2]?.data ?? [];
+  const strategyRows = analyticsBundle?.[3]?.data ?? [];
+  const planCompliance = analyticsBundle?.[4]?.data ?? [];
+  const riskStats = analyticsBundle?.[5]?.data ?? [];
+  const timeAnalytics = analyticsBundle?.[6]?.data ?? EMPTY_TIME;
+  const heatmapCells = analyticsBundle?.[7]?.data.cells ?? [];
+  const psychology = analyticsBundle?.[8]?.data ?? EMPTY_PSYCHOLOGY;
+  const mistakeAnalytics = analyticsBundle?.[9]?.data ?? [];
+  const durationAnalytics = analyticsBundle?.[10]?.data ?? [];
+  const rolling = analyticsBundle?.[11]?.data ?? EMPTY_ROLLING;
+  const comparison = analyticsBundle?.[12]?.data ?? EMPTY_COMPARISON;
+  const directionAnalytics =
+    analyticsBundle?.[13]?.data ?? EMPTY_DIRECTION_ANALYTICS;
+  const behaviorAnalytics =
+    analyticsBundle?.[14]?.data ?? EMPTY_BEHAVIOR_ANALYTICS;
+  const tagAnalytics = analyticsBundle?.[15]?.data ?? EMPTY_TAG_ANALYTICS;
+  const plannedRrAnalytics =
+    analyticsBundle?.[16]?.data ?? EMPTY_PLANNED_RR_ANALYTICS;
+  const concentrationAnalytics =
+    analyticsBundle?.[17]?.data ?? EMPTY_CONCENTRATION_ANALYTICS;
+  const executionAnalytics =
+    analyticsBundle?.[18]?.data ?? EMPTY_EXECUTION_ANALYTICS;
+  const edgeFinderAnalytics =
+    analyticsBundle?.[19]?.data ?? EMPTY_EDGE_FINDER_ANALYTICS;
+  const insightsAnalytics =
+    analyticsBundle?.[20]?.data ?? EMPTY_INSIGHTS_ANALYTICS;
 
   return (
     <Suspense

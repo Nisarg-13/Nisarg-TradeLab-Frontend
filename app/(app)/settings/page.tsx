@@ -1,13 +1,12 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileSettingsForm } from "@/components/settings/profile-settings-form";
-import { getCurrentUser } from "@/lib/api/users";
-import { getServerAuthToken } from "@/lib/auth/server";
+import { getServerCurrentUser } from "@/lib/api/users";
 
 export default async function SettingsPage() {
   let profile = null;
 
   try {
-    const response = await getCurrentUser(getServerAuthToken);
+    const response = await getServerCurrentUser();
     profile = response.data;
   } catch {
     profile = null;

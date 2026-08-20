@@ -1,36 +1,21 @@
 import { DashboardManager } from "@/components/dashboard/dashboard-manager";
 import { EMPTY_ANALYTICS_SUMMARY } from "@/lib/analytics/empty-summary";
-import { listAccounts } from "@/lib/api/accounts";
 import {
   getAnalyticsSummary,
   getInstrumentPerformance,
   getStrategyPerformance,
 } from "@/lib/api/analytics";
-import { getServerCurrentUser } from "@/lib/api/users";
 import { listTrades } from "@/lib/api/trades";
 import { getServerAuthToken } from "@/lib/auth/server";
-import {
-  buildTradingAccountQuery,
-  getServerSelectedAccountId,
-} from "@/lib/preferences/server-selected-account";
-import type { TradingAccount } from "@/types/account";
+import { getServerAppContext } from "@/lib/server/app-context";
 import type {
-  AnalyticsSummary,
   InstrumentPerformance,
   StrategyPerformance,
 } from "@/types/analytics";
 import type { Trade } from "@/types/trade";
 
 export default async function DashboardPage() {
-  const [accounts] = await Promise.all([
-    listAccounts(getServerAuthToken)
-      .then((response) => response.data)
-      .catch(() => [] as TradingAccount[]),
-    getServerCurrentUser().catch(() => null),
-  ]);
-
-  const selectedAccountId = await getServerSelectedAccountId(accounts);
-  const query = buildTradingAccountQuery(selectedAccountId);
+  const { accounts, query } = await getServerAppContext();
 
   const [
     summaryResult,
@@ -68,7 +53,7 @@ export default async function DashboardPage() {
   return (
     <DashboardManager
       accounts={accounts}
-      initialSummary={summaryResult as AnalyticsSummary}
+      initialSummary={summaryResult}
       initialInstruments={instrumentsResult}
       initialStrategies={strategiesResult}
       initialRecentTrades={recentTradesResult}

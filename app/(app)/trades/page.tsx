@@ -1,44 +1,30 @@
 import { TradesManager } from "@/components/trades/trades-manager";
-import { listAccounts } from "@/lib/api/accounts";
 import { listTrades } from "@/lib/api/trades";
 import { getServerAuthToken } from "@/lib/auth/server";
-import {
-  buildTradingAccountQuery,
-  getServerSelectedAccountId,
-} from "@/lib/preferences/server-selected-account";
-import type { TradingAccount } from "@/types/account";
+import { getServerAppContext } from "@/lib/server/app-context";
 import type { Trade } from "@/types/trade";
 
 export default async function TradesPage() {
-  let trades: Trade[] = [];
-  let meta = { page: 1, limit: 10, total: 0, totalPages: 1 };
-  let accounts: TradingAccount[] = [];
+  const { accounts, query } = await getServerAppContext();
 
-  try {
-    const accountsResponse = await listAccounts(getServerAuthToken);
-    accounts = accountsResponse.data;
-  } catch {
-    accounts = [];
-  }
-
-  const selectedAccountId = await getServerSelectedAccountId(accounts);
-
-  try {
-    const tradesResponse = await listTrades(getServerAuthToken, {
-      sort: "openedAt_desc",
-      limit: 10,
-      ...buildTradingAccountQuery(selectedAccountId),
-    });
-    trades = tradesResponse.data;
-    meta = tradesResponse.meta;
-  } catch {
-    trades = [];
-  }
+  const tradesResult = await listTrades(getServerAuthToken, {
+    sort: "openedAt_desc",
+    limit: 10,
+    ...query,
+  })
+    .then((response) => ({
+      trades: response.data,
+      meta: response.meta,
+    }))
+    .catch(() => ({
+      trades: [] as Trade[],
+      meta: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    }));
 
   return (
     <TradesManager
-      initialTrades={trades}
-      initialMeta={meta}
+      initialTrades={tradesResult.trades}
+      initialMeta={tradesResult.meta}
       accounts={accounts}
     />
   );

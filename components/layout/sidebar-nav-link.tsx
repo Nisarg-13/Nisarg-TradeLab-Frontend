@@ -18,6 +18,7 @@ export function SidebarNavLink({
   return (
     <Link
       href={href}
+      prefetch
       onClick={onClick}
       className={cn(
         "flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm transition-colors",

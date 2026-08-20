@@ -1,9 +1,15 @@
-import { getServerCurrentUser } from "@/lib/api/users";
+import { getServerAppContext } from "@/lib/server/app-context";
 import { resolveAccountIdForAccounts } from "@/lib/preferences/selected-account";
+import { getServerCurrentUser } from "@/lib/api/users";
 
 export async function getServerSelectedAccountId(
-  accounts: Array<{ id: string }>,
+  accounts?: Array<{ id: string }>,
 ): Promise<string | undefined> {
+  if (!accounts) {
+    const context = await getServerAppContext();
+    return context.selectedAccountId;
+  }
+
   if (accounts.length === 0) {
     return undefined;
   }

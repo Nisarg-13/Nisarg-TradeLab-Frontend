@@ -1,23 +1,11 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { TimezoneProvider } from "@/components/providers/timezone-provider";
-import { getServerCurrentUser } from "@/lib/api/users";
+import { TimezoneSync } from "@/components/providers/timezone-sync";
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  let initialTimezone = "UTC";
-
-  try {
-    const response = await getServerCurrentUser();
-    initialTimezone = response.data.timezone;
-  } catch {
-    initialTimezone = "UTC";
-  }
-
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <TimezoneProvider key={initialTimezone} initialTimezone={initialTimezone}>
+    <TimezoneProvider initialTimezone="UTC">
+      <TimezoneSync />
       <AppShell>{children}</AppShell>
     </TimezoneProvider>
   );

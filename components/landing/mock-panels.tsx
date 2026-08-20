@@ -1,3 +1,5 @@
+import { EquitySparkline } from "@/components/landing/equity-sparkline";
+import { MockAiInsightCard } from "@/components/landing/mock-ai-insight-card";
 import {
   Card,
   CardContent,
@@ -5,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MockAiInsightCard } from "@/components/landing/mock-ai-insight-card";
 import { cn } from "@/lib/utils";
 
 const SUMMARY_CARDS = [
@@ -35,48 +36,6 @@ const SUMMARY_CARDS = [
   },
 ] as const;
 
-const EQUITY_POINTS = [42, 48, 45, 52, 58, 55, 63, 68, 64, 72, 78, 84];
-
-function EquitySparkline() {
-  const width = 560;
-  const height = 140;
-  const max = Math.max(...EQUITY_POINTS);
-  const min = Math.min(...EQUITY_POINTS);
-  const range = max - min || 1;
-  const points = EQUITY_POINTS.map((value, index) => {
-    const x = (index / (EQUITY_POINTS.length - 1)) * width;
-    const y = height - ((value - min) / range) * (height - 24) - 12;
-    return `${x},${y}`;
-  }).join(" ");
-
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="h-36 w-full"
-      role="img"
-      aria-label="Sample equity curve"
-    >
-      <defs>
-        <linearGradient id="landing-equity-fill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="rgb(47 140 255 / 0.35)" />
-          <stop offset="100%" stopColor="rgb(47 140 255 / 0)" />
-        </linearGradient>
-      </defs>
-      <polygon
-        fill="url(#landing-equity-fill)"
-        points={`0,${height} ${points} ${width},${height}`}
-      />
-      <polyline
-        fill="none"
-        stroke="rgb(47 140 255)"
-        strokeWidth="3"
-        strokeLinecap="round"
-        points={points}
-      />
-    </svg>
-  );
-}
-
 export function MockDashboardPanel() {
   return (
     <div className="space-y-4">
@@ -104,7 +63,10 @@ export function MockDashboardPanel() {
           <CardTitle className="text-base">Equity curve</CardTitle>
         </CardHeader>
         <CardContent>
-          <EquitySparkline />
+          <EquitySparkline
+            className="h-36 w-full"
+            gradientId="product-preview-equity"
+          />
         </CardContent>
       </Card>
     </div>

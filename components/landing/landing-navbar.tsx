@@ -1,13 +1,16 @@
 "use client";
 
 import { Menu, TrendingUp, X } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 
 import { LandingAuthButtons } from "@/components/landing/landing-auth-buttons";
 import { Button } from "@/components/ui/button";
 import { LANDING_NAV_ITEMS } from "@/lib/constants/landing";
 import { cn } from "@/lib/utils";
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
 function scrollToSection(href: string) {
   const id = href.replace("#", "");
@@ -23,10 +26,20 @@ export function LandingNavbar() {
     scrollToSection(href);
   }
 
+  function handleLogoClick() {
+    setOpen(false);
+    scrollToTop();
+  }
+
   return (
     <header className="bg-background/80 border-border/60 landing-navbar-enter sticky top-0 z-50 border-b backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
-        <Link href="/" className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleLogoClick}
+          className="flex items-center gap-3 text-left transition-opacity hover:opacity-90"
+          aria-label="Back to top of page"
+        >
           <div className="bg-primary flex size-9 items-center justify-center rounded-lg">
             <TrendingUp
               className="text-primary-foreground size-5"
@@ -41,7 +54,7 @@ export function LandingNavbar() {
               Track. Analyze. Improve.
             </p>
           </div>
-        </Link>
+        </button>
 
         <nav
           className="hidden items-center gap-6 lg:flex"
@@ -61,8 +74,8 @@ export function LandingNavbar() {
 
         <div className="hidden items-center gap-2 lg:flex">
           <LandingAuthButtons
-            primaryLabel="Create Account"
-            showSecondary
+            primaryLabel="Get Started"
+            showSecondary={false}
             className="flex-row"
           />
         </div>
@@ -101,7 +114,11 @@ export function LandingNavbar() {
             </button>
           ))}
           <div className="border-border/60 mt-4 border-t pt-4">
-            <LandingAuthButtons layout="column" primaryLabel="Create Account" />
+            <LandingAuthButtons
+              layout="column"
+              primaryLabel="Get Started"
+              showSecondary={false}
+            />
           </div>
         </nav>
       </div>

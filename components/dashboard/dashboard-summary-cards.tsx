@@ -106,7 +106,13 @@ export function DashboardSummaryCards({
       <SummaryCard
         label="Net PnL"
         value={formatMoney(summary.netPnl, currency)}
-        hint={`${summary.closedTradeCount} closed trades`}
+        hint={[
+          `${summary.closedTradeCount} closed trades`,
+          `${summary.winCount}W / ${summary.lossCount}L`,
+          summary.breakevenCount > 0 ? `${summary.breakevenCount}BE` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
         valueClassName={pnlTextClass(summary.netPnl)}
       />
       <SummaryCard
@@ -125,9 +131,18 @@ export function DashboardSummaryCards({
       />
       <SummaryCard label="Profit factor" value={summary.profitFactor ?? "—"} />
       <SummaryCard
-        label="Max drawdown"
-        value={formatPercent(summary.maxDrawdownPercentage)}
-        hint={formatMoney(summary.maxDrawdownAmount, currency)}
+        label="Expectancy"
+        value={
+          summary.moneyExpectancy
+            ? formatMoney(summary.moneyExpectancy, currency)
+            : "—"
+        }
+        hint={
+          summary.rExpectancy
+            ? `${Number(summary.rExpectancy).toFixed(2)}R per trade`
+            : "Expected $ per closed trade"
+        }
+        valueClassName={pnlTextClass(summary.moneyExpectancy)}
       />
     </div>
   );

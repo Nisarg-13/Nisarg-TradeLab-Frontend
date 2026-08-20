@@ -15,7 +15,9 @@ export type ApiClientOptions = {
   signal?: AbortSignal;
 };
 
-function getBaseUrl(): string {
+const BACKEND_PROXY_PREFIX = "/backend-proxy";
+
+function resolveBackendBaseUrl(): string {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   if (!baseUrl) {
@@ -23,6 +25,15 @@ function getBaseUrl(): string {
   }
 
   return baseUrl.replace(/\/$/, "");
+}
+
+function getBaseUrl(): string {
+  // Browser calls use same-origin proxy so CORS never blocks client actions.
+  if (typeof window !== "undefined") {
+    return BACKEND_PROXY_PREFIX;
+  }
+
+  return resolveBackendBaseUrl();
 }
 
 export async function apiRequest<T>(
@@ -46,8 +57,9 @@ export async function apiRequest<T>(
       },
     });
   } catch (error) {
+    const backendUrl = resolveBackendBaseUrl();
     throw new ApiError(
-      "Unable to reach the API. If this persists, check that the backend is running and CORS is configured for your frontend URL.",
+      `Unable to reach the API at ${backendUrl}. If this persists, verify NEXT_PUBLIC_API_BASE_URL on Vercel and that the FastAPI backend is running.`,
       0,
       error,
     );

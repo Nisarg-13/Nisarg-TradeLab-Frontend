@@ -90,6 +90,12 @@ function ConnectionStatusCard({
                   ? new Date(connection.lastHeartbeatAt).toLocaleString()
                   : "Never"}
               </p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Last price snapshot:{" "}
+                {connection.lastSnapshotAt
+                  ? new Date(connection.lastSnapshotAt).toLocaleString()
+                  : "Never"}
+              </p>
             </div>
           ))
         )}
@@ -259,7 +265,9 @@ export function LiveTradesManager({
 
       {data.liveStatus === "STALE" ? (
         <p className={cn("text-sm", liveStatusTone("STALE"))}>
-          Some MT5 prices may be stale. Do not treat them as live market data.
+          Live prices may be stale or missing. Check that the MT5 EA is running
+          and that &quot;Last price snapshot&quot; is updating on the connection
+          card above.
         </p>
       ) : null}
     </div>

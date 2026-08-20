@@ -216,6 +216,16 @@ export function Mt5ConnectionPanel({
                   : "Never"}
               </p>
             </div>
+            <div>
+              <p className="text-muted-foreground text-sm">
+                Last price snapshot
+              </p>
+              <p className="font-medium">
+                {connection.lastPositionSnapshotAt
+                  ? new Date(connection.lastPositionSnapshotAt).toLocaleString()
+                  : "Never"}
+              </p>
+            </div>
           </div>
         ) : (
           <p className="text-muted-foreground text-sm">

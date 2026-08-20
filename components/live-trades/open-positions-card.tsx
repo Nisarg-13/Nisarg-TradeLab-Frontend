@@ -125,9 +125,11 @@ export function OpenPositionsCard({
                   <td
                     className={cn(
                       "tabular-data py-3 font-medium",
-                      position.floatingPnl && Number(position.floatingPnl) >= 0
-                        ? "text-profit"
-                        : "text-loss",
+                      position.floatingPnl === null
+                        ? "text-muted-foreground"
+                        : Number(position.floatingPnl) >= 0
+                          ? "text-profit"
+                          : "text-loss",
                     )}
                   >
                     {formatSignedMoney(

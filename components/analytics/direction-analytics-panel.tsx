@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { TradeCountDisplay } from "@/components/analytics/trade-count-display";
 import { formatMoney } from "@/lib/formatting/currency";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,13 @@ export function DirectionAnalyticsPanel({
                 {data.overall.map((side) => (
                   <tr key={side.direction} className="border-b last:border-0">
                     <td className="py-3 font-medium">{side.label}</td>
-                    <td className="tabular-data py-3">{side.tradeCount}</td>
+                    <td className="py-3">
+                      <TradeCountDisplay
+                        tradeCount={side.tradeCount}
+                        winCount={side.winCount}
+                        lossCount={side.lossCount}
+                      />
+                    </td>
                     <td
                       className={cn(
                         "tabular-data py-3",
@@ -109,7 +116,16 @@ export function DirectionAnalyticsPanel({
                   <tr key={entry.symbol} className="border-b last:border-0">
                     <td className="py-3 font-medium">{entry.symbol}</td>
                     <td className="tabular-data py-3">
-                      {entry.long?.tradeCount ?? 0}
+                      {entry.long ? (
+                        <TradeCountDisplay
+                          tradeCount={entry.long.tradeCount}
+                          winCount={entry.long.winCount}
+                          lossCount={entry.long.lossCount}
+                          stacked={false}
+                        />
+                      ) : (
+                        0
+                      )}
                     </td>
                     <td
                       className={cn(
@@ -124,7 +140,16 @@ export function DirectionAnalyticsPanel({
                         : "—"}
                     </td>
                     <td className="tabular-data py-3">
-                      {entry.short?.tradeCount ?? 0}
+                      {entry.short ? (
+                        <TradeCountDisplay
+                          tradeCount={entry.short.tradeCount}
+                          winCount={entry.short.winCount}
+                          lossCount={entry.short.lossCount}
+                          stacked={false}
+                        />
+                      ) : (
+                        0
+                      )}
                     </td>
                     <td
                       className={cn(

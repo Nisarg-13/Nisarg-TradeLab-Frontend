@@ -1,19 +1,16 @@
 import { AnalyticsManager } from "@/components/analytics/analytics-manager";
 import { EMPTY_ANALYTICS_SUMMARY } from "@/lib/analytics/empty-summary";
 import {
-  EMPTY_BEHAVIOR_ANALYTICS,
   EMPTY_CONCENTRATION_ANALYTICS,
   EMPTY_DIRECTION_ANALYTICS,
-  EMPTY_EDGE_FINDER_ANALYTICS,
-  EMPTY_EXECUTION_ANALYTICS,
   EMPTY_INSIGHTS_ANALYTICS,
-  EMPTY_PLANNED_RR_ANALYTICS,
+  EMPTY_SESSION_DASHBOARD,
   EMPTY_TAG_ANALYTICS,
 } from "@/lib/analytics/empty-analytics";
 import {
   getAnalyticsSummary,
   getPlanCompliance,
-  getSessionPerformance,
+  getSessionDashboard,
 } from "@/lib/api/analytics";
 import { listMistakes, listStrategies, listTags } from "@/lib/api/strategies";
 import { getServerAuthToken } from "@/lib/auth/server";
@@ -49,6 +46,8 @@ const EMPTY_ROLLING: RollingPerformance = {
     key: "all",
     label: "Current window",
     tradeCount: 0,
+    winCount: 0,
+    lossCount: 0,
     netPnl: "0.00",
     totalR: null,
     winRate: null,
@@ -62,6 +61,8 @@ const EMPTY_ROLLING: RollingPerformance = {
     key: "all",
     label: "Previous window",
     tradeCount: 0,
+    winCount: 0,
+    lossCount: 0,
     netPnl: "0.00",
     totalR: null,
     winRate: null,
@@ -79,6 +80,8 @@ const EMPTY_COMPARISON: PeriodComparison = {
   periodA: {
     label: "Latest 20 trades",
     tradeCount: 0,
+    winCount: 0,
+    lossCount: 0,
     netPnl: "0.00",
     totalR: null,
     winRate: null,
@@ -97,6 +100,8 @@ const EMPTY_COMPARISON: PeriodComparison = {
   periodB: {
     label: "Previous 20 trades",
     tradeCount: 0,
+    winCount: 0,
+    lossCount: 0,
     netPnl: "0.00",
     totalR: null,
     winRate: null,
@@ -131,7 +136,7 @@ const EMPTY_COMPARISON: PeriodComparison = {
 
 export default async function AnalyticsOverviewPage() {
   const heatmapMetric: HeatmapMetric = "pnl";
-  const { accounts, selectedAccountId, query } = await getServerAppContext();
+  const { accounts, query } = await getServerAppContext();
 
   const [strategies, mistakes, tags, overviewBundle] = await Promise.all([
     listStrategies(getServerAuthToken)
@@ -147,27 +152,26 @@ export default async function AnalyticsOverviewPage() {
       getAnalyticsSummary(getServerAuthToken, query)
         .then((response) => response.data)
         .catch(() => EMPTY_ANALYTICS_SUMMARY),
-      getSessionPerformance(getServerAuthToken, query)
+      getSessionDashboard(getServerAuthToken, query)
         .then((response) => response.data)
-        .catch(() => []),
+        .catch(() => EMPTY_SESSION_DASHBOARD),
       getPlanCompliance(getServerAuthToken, query)
         .then((response) => response.data)
         .catch(() => []),
     ]),
   ]);
 
-  const [summary, sessionPerformance, planCompliance] = overviewBundle;
+  const [summary, sessionDashboard, planCompliance] = overviewBundle;
 
   return (
     <AnalyticsManager
       accounts={accounts}
-      serverSelectedAccountId={selectedAccountId ?? ""}
       strategies={strategies}
       tags={tags}
       mistakes={mistakes}
       initialSummary={summary}
       initialInstruments={[]}
-      initialSessionPerformance={sessionPerformance}
+      initialSessionDashboard={sessionDashboard}
       initialStrategies={[]}
       initialPlanCompliance={planCompliance}
       initialRiskStats={[]}
@@ -180,14 +184,9 @@ export default async function AnalyticsOverviewPage() {
       initialRolling={EMPTY_ROLLING}
       initialComparison={EMPTY_COMPARISON}
       initialDirection={EMPTY_DIRECTION_ANALYTICS}
-      initialBehavior={EMPTY_BEHAVIOR_ANALYTICS}
       initialTagAnalytics={EMPTY_TAG_ANALYTICS}
-      initialPlannedRr={EMPTY_PLANNED_RR_ANALYTICS}
       initialConcentration={EMPTY_CONCENTRATION_ANALYTICS}
-      initialExecution={EMPTY_EXECUTION_ANALYTICS}
-      initialEdgeFinder={EMPTY_EDGE_FINDER_ANALYTICS}
       initialInsights={EMPTY_INSIGHTS_ANALYTICS}
-      deferSecondaryLoad
     />
   );
 }

@@ -21,6 +21,7 @@ import type {
   RiskStatGroup,
   RollingPerformance,
   SessionPerformance,
+  SessionDashboard,
   StrategyPerformance,
   TagAnalyticsGroup,
   TimeAnalytics,
@@ -69,6 +70,16 @@ export async function getSessionPerformance(
 ) {
   return apiRequest<ApiDataResponse<SessionPerformance[]>>(
     `/api/v1/analytics/sessions${buildQuery(query)}`,
+    { getAuthToken },
+  );
+}
+
+export async function getSessionDashboard(
+  getAuthToken: () => Promise<string | null>,
+  query: AnalyticsQuery = {},
+) {
+  return apiRequest<ApiDataResponse<SessionDashboard>>(
+    `/api/v1/analytics/sessions/dashboard${buildQuery(query)}`,
     { getAuthToken },
   );
 }

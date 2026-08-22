@@ -1,6 +1,7 @@
 "use client";
 
 import { MetricsGroupsTable } from "@/components/analytics/metrics-groups-table";
+import { TradeCountPhrase } from "@/components/analytics/trade-count-display";
 import {
   Card,
   CardContent,
@@ -9,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatMoney } from "@/lib/formatting/currency";
+import { TradeCountDisplay } from "@/components/analytics/trade-count-display";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
 import type { InsightsAnalytics, TradeMetricsGroup } from "@/types/analytics";
@@ -44,7 +46,11 @@ function HighlightCard({
               {formatMoney(group.netPnl, currency)}
             </p>
             <p className="text-muted-foreground text-sm">
-              {group.tradeCount} trades
+              <TradeCountPhrase
+                tradeCount={group.tradeCount}
+                winCount={group.winCount}
+                lossCount={group.lossCount}
+              />
               {group.winRate
                 ? ` · ${Number(group.winRate).toFixed(1)}% win rate`
                 : ""}
@@ -198,7 +204,13 @@ export function InsightsAnalyticsPanel({
                   >
                     <td className="py-3">{row.sessionLabel}</td>
                     <td className="py-3 font-medium">{row.symbol}</td>
-                    <td className="tabular-data py-3">{row.tradeCount}</td>
+                    <td className="py-3">
+                      <TradeCountDisplay
+                        tradeCount={row.tradeCount}
+                        winCount={row.winCount}
+                        lossCount={row.lossCount}
+                      />
+                    </td>
                     <td
                       className={cn(
                         "tabular-data py-3",
@@ -263,7 +275,13 @@ export function InsightsAnalyticsPanel({
                 {data.timeframeOutcomes.map((row) => (
                   <tr key={row.key} className="border-b last:border-0">
                     <td className="py-3 font-medium">{row.label}</td>
-                    <td className="tabular-data py-3">{row.tradeCount}</td>
+                    <td className="py-3">
+                      <TradeCountDisplay
+                        tradeCount={row.tradeCount}
+                        winCount={row.wins}
+                        lossCount={row.losses}
+                      />
+                    </td>
                     <td className="tabular-data py-3 text-emerald-600 dark:text-emerald-400">
                       {row.wins}
                     </td>

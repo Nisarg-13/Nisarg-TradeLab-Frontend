@@ -20,6 +20,8 @@ type DropdownSelectProps = {
   required?: boolean;
   className?: string;
   menuPlacement?: "top" | "bottom" | "auto";
+  /** Prepended to the trigger label only (not menu items). */
+  triggerPrefix?: string;
 };
 
 function estimateMenuHeight(optionCount: number) {
@@ -36,6 +38,7 @@ export function DropdownSelect({
   required,
   className,
   menuPlacement = "auto",
+  triggerPrefix = "",
 }: DropdownSelectProps) {
   const [open, setOpen] = useState(false);
   const [resolvedPlacement, setResolvedPlacement] = useState<"top" | "bottom">(
@@ -125,9 +128,12 @@ export function DropdownSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={toggleOpen}
-        className="border-input bg-background hover:bg-muted/50 flex h-9 w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors"
+        className="border-input bg-background hover:bg-muted/50 flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors"
       >
-        <span>{selected?.label ?? "Select..."}</span>
+        <span className="truncate">
+          {triggerPrefix}
+          {selected?.label ?? "Select..."}
+        </span>
         <ChevronDown
           className={cn(
             "size-4 shrink-0 opacity-50 transition-transform",
@@ -139,7 +145,7 @@ export function DropdownSelect({
         <ul
           role="listbox"
           className={cn(
-            "bg-popover text-popover-foreground absolute z-[200] max-h-60 w-full overflow-auto rounded-lg border p-1 shadow-md",
+            "bg-popover text-popover-foreground absolute z-[200] max-h-60 w-max min-w-full overflow-auto rounded-lg border p-1 shadow-md",
             resolvedPlacement === "top"
               ? "bottom-[calc(100%+0.25rem)]"
               : "top-[calc(100%+0.25rem)]",
@@ -164,7 +170,7 @@ export function DropdownSelect({
                       setOpen(false);
                     }}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors",
+                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm whitespace-nowrap transition-colors",
                       isSelected ? "bg-muted font-medium" : "hover:bg-muted/70",
                     )}
                   >

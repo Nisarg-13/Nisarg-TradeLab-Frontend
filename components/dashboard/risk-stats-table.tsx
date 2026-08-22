@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { TradeCountDisplay } from "@/components/analytics/trade-count-display";
 import { formatMoney } from "@/lib/formatting/currency";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
@@ -46,7 +47,13 @@ export function RiskStatsTable({
               {populated.map((group) => (
                 <tr key={group.label} className="border-b last:border-0">
                   <td className="py-3 font-medium">{group.label}</td>
-                  <td className="tabular-data py-3">{group.tradeCount}</td>
+                  <td className="py-3">
+                    <TradeCountDisplay
+                      tradeCount={group.tradeCount}
+                      winCount={group.winCount}
+                      lossCount={group.lossCount}
+                    />
+                  </td>
                   <td
                     className={cn(
                       "tabular-data py-3",

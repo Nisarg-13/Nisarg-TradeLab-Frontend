@@ -1,21 +1,20 @@
 "use client";
 
+import { useAuth } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AnalyticsFilters } from "@/components/analytics/analytics-filters";
 import { AnalyticsOverviewCards } from "@/components/analytics/analytics-overview-cards";
 import { ConcentrationPanel } from "@/components/analytics/concentration-panel";
-import { EdgeFinderPanel } from "@/components/analytics/edge-finder-panel";
-import { ExecutionAnalyticsPanel } from "@/components/analytics/execution-analytics-panel";
-import { InsightsAnalyticsPanel } from "@/components/analytics/insights-analytics-panel";
-import { BehaviorAnalyticsPanel } from "@/components/analytics/behavior-analytics-panel";
 import { DirectionAnalyticsPanel } from "@/components/analytics/direction-analytics-panel";
-import { PlannedRrPanel } from "@/components/analytics/planned-rr-panel";
 import { MetricsGroupsTable } from "@/components/analytics/metrics-groups-table";
 import { PeriodComparisonPanel } from "@/components/analytics/period-comparison-panel";
+import { TradeCountPhrase } from "@/components/analytics/trade-count-display";
+import { SessionPerformancePanel } from "@/components/analytics/session-performance/session-performance-panel";
 import { TimeHeatmap } from "@/components/analytics/time-heatmap";
+import { useTimezone } from "@/components/providers/timezone-provider";
 import { DailyPerformanceCalendar } from "@/components/dashboard/daily-performance-calendar";
 import { EquityCurveChart } from "@/components/dashboard/equity-curve-chart";
 import {
@@ -34,60 +33,62 @@ import {
 } from "@/components/ui/card";
 import {
   getAnalyticsSummary,
-  getBehaviorAnalytics,
   getConcentrationAnalytics,
   getDirectionAnalytics,
   getDurationAnalytics,
-  getEdgeFinderAnalytics,
-  getExecutionAnalytics,
   getHeatmapAnalytics,
   getInsightsAnalytics,
   getInstrumentPerformance,
   getMistakeAnalytics,
   getPeriodComparison,
-  getPlannedRrAnalytics,
   getPlanCompliance,
   getPsychologyAnalytics,
   getRiskStats,
   getRollingPerformance,
-  getSessionPerformance,
+  getSessionDashboard,
   getStrategyPerformance,
   getTagAnalytics,
   getTimeAnalytics,
 } from "@/lib/api/analytics";
 import { useClientAuthToken } from "@/lib/auth/client";
 import {
+  ANALYTICS_TABS,
   analyticsTabFromParams,
+  countActiveAnalyticsFilters,
   parseAnalyticsQuery,
   serializeAnalyticsTab,
+  type AnalyticsTabId,
 } from "@/lib/analytics/query-state";
-import { loadSecondaryAnalytics } from "@/lib/analytics/load-secondary-analytics";
 import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
 } from "@/lib/hooks/use-persisted-account-id";
-import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
+import {
+  TIMEZONE_CHANGE_EVENT,
+  getTimezoneLabel,
+} from "@/lib/constants/timezones";
+import {
+  applyProfileTimeLabels,
+  formatTwoHourWindow24,
+  getCurrentTwoHourWindowStart,
+} from "@/lib/formatting/time-windows";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type {
   AnalyticsQuery,
   AnalyticsSummary,
-  BehaviorAnalytics,
   ConcentrationAnalytics,
   DirectionAnalytics,
-  EdgeFinderAnalytics,
-  ExecutionAnalytics,
   HeatmapMetric,
   InstrumentPerformance,
   MistakeAnalyticsGroup,
   PeriodComparison,
   PeriodComparisonMode,
-  PlannedRrAnalytics,
   PlanComplianceGroup,
   PsychologyAnalytics,
   RiskStatGroup,
   RollingPerformance,
-  SessionPerformance,
+  SessionDashboard,
   StrategyPerformance,
   TagAnalyticsGroup,
   TimeAnalytics,
@@ -97,35 +98,14 @@ import type {
 } from "@/types/analytics";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
 
-const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "instruments", label: "Instruments" },
-  { id: "strategies", label: "Strategies" },
-  { id: "direction", label: "Long / Short" },
-  { id: "time", label: "Time" },
-  { id: "insights", label: "Insights" },
-  { id: "risk", label: "Risk" },
-  { id: "psychology", label: "Psychology" },
-  { id: "setups", label: "Entry criteria" },
-  { id: "planned-rr", label: "Planned R" },
-  { id: "behavior", label: "Behavior" },
-  { id: "mistakes", label: "Mistakes" },
-  { id: "execution", label: "Execution" },
-  { id: "edge-finder", label: "Edge Finder" },
-  { id: "compare", label: "Compare" },
-] as const;
-
-type AnalyticsTab = (typeof TABS)[number]["id"];
-
 export function AnalyticsManager({
   accounts,
-  serverSelectedAccountId = "",
   strategies,
   tags,
   mistakes,
   initialSummary,
   initialInstruments,
-  initialSessionPerformance,
+  initialSessionDashboard,
   initialStrategies,
   initialPlanCompliance,
   initialRiskStats,
@@ -138,23 +118,17 @@ export function AnalyticsManager({
   initialRolling,
   initialComparison,
   initialDirection,
-  initialBehavior,
   initialTagAnalytics,
-  initialPlannedRr,
   initialConcentration,
-  initialExecution,
-  initialEdgeFinder,
   initialInsights,
-  deferSecondaryLoad = false,
 }: {
   accounts: TradingAccount[];
-  serverSelectedAccountId?: string;
   strategies: Strategy[];
   tags: Tag[];
   mistakes: Mistake[];
   initialSummary: AnalyticsSummary;
   initialInstruments: InstrumentPerformance[];
-  initialSessionPerformance: SessionPerformance[];
+  initialSessionDashboard: SessionDashboard;
   initialStrategies: StrategyPerformance[];
   initialPlanCompliance: PlanComplianceGroup[];
   initialRiskStats: RiskStatGroup[];
@@ -167,38 +141,35 @@ export function AnalyticsManager({
   initialRolling: RollingPerformance;
   initialComparison: PeriodComparison;
   initialDirection: DirectionAnalytics;
-  initialBehavior: BehaviorAnalytics;
   initialTagAnalytics: TagAnalyticsGroup[];
-  initialPlannedRr: PlannedRrAnalytics;
   initialConcentration: ConcentrationAnalytics;
-  initialExecution: ExecutionAnalytics;
-  initialEdgeFinder: EdgeFinderAnalytics;
   initialInsights: InsightsAnalytics;
-  deferSecondaryLoad?: boolean;
 }) {
   const getAuthToken = useClientAuthToken();
+  const { isLoaded: isAuthLoaded } = useAuth();
+  const { timezone } = useTimezone();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialFilters = useMemo(
     () => parseAnalyticsQuery(searchParams),
     [searchParams],
   );
-  const initialTab = useMemo(
-    () => analyticsTabFromParams(searchParams) as AnalyticsTab,
+  const tabFromUrl = useMemo(
+    () => analyticsTabFromParams(searchParams),
     [searchParams],
   );
-  const hasHydratedFilters = useRef(false);
-  const secondaryLoadedRef = useRef(!deferSecondaryLoad);
+  const activeTab = tabFromUrl;
   const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
-  const [activeTab, setActiveTab] = useState<AnalyticsTab>(
-    TABS.some((tab) => tab.id === initialTab) ? initialTab : "overview",
-  );
-  const [filters, setFilters] = useState<AnalyticsQuery>(initialFilters);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] =
+    useState<AnalyticsQuery>(initialFilters);
+  const [draftFilters, setDraftFilters] =
+    useState<AnalyticsQuery>(initialFilters);
   const [isLoading, setIsLoading] = useState(false);
   const [summary, setSummary] = useState(initialSummary);
   const [instruments, setInstruments] = useState(initialInstruments);
-  const [sessionPerformance, setSessionPerformance] = useState(
-    initialSessionPerformance,
+  const [sessionDashboard, setSessionDashboard] = useState(
+    initialSessionDashboard,
   );
   const [strategyRows, setStrategyRows] = useState(initialStrategies);
   const [planCompliance, setPlanCompliance] = useState(initialPlanCompliance);
@@ -216,16 +187,9 @@ export function AnalyticsManager({
   const [comparison, setComparison] = useState(initialComparison);
   const [directionAnalytics, setDirectionAnalytics] =
     useState(initialDirection);
-  const [behaviorAnalytics, setBehaviorAnalytics] = useState(initialBehavior);
   const [tagAnalytics, setTagAnalytics] = useState(initialTagAnalytics);
-  const [plannedRrAnalytics, setPlannedRrAnalytics] =
-    useState(initialPlannedRr);
   const [concentrationAnalytics, setConcentrationAnalytics] =
     useState(initialConcentration);
-  const [executionAnalytics, setExecutionAnalytics] =
-    useState(initialExecution);
-  const [edgeFinderAnalytics, setEdgeFinderAnalytics] =
-    useState(initialEdgeFinder);
   const [insightsAnalytics, setInsightsAnalytics] = useState(initialInsights);
   const [comparisonMode, setComparisonMode] = useState<PeriodComparisonMode>(
     initialComparison.mode,
@@ -241,11 +205,38 @@ export function AnalyticsManager({
 
   const queryFilters = useMemo<AnalyticsQuery>(
     () => ({
+      ...appliedFilters,
+      tradingAccountId:
+        (appliedFilters.tradingAccountId ?? accountId) || undefined,
+      timezone,
+    }),
+    [accountId, appliedFilters, timezone],
+  );
+
+  const localizedTimeAnalytics = useMemo(
+    () => applyProfileTimeLabels(timeAnalytics),
+    [timeAnalytics],
+  );
+
+  const currentTwoHourWindow = useMemo(
+    () => formatTwoHourWindow24(getCurrentTwoHourWindowStart(timezone)),
+    [timezone],
+  );
+
+  const timezoneLabel = useMemo(() => getTimezoneLabel(timezone), [timezone]);
+
+  const activeFilterCount = countActiveAnalyticsFilters(
+    appliedFilters,
+    accountId,
+  );
+
+  function buildQueryFromFilters(filters: AnalyticsQuery): AnalyticsQuery {
+    return {
       ...filters,
       tradingAccountId: (filters.tradingAccountId ?? accountId) || undefined,
-    }),
-    [accountId, filters],
-  );
+      timezone,
+    };
+  }
 
   function syncUrl(nextFilters: AnalyticsQuery, tab = activeTab) {
     router.replace(
@@ -254,53 +245,68 @@ export function AnalyticsManager({
     );
   }
 
-  function handleTabChange(tab: AnalyticsTab) {
-    setActiveTab(tab);
+  function handleTabChange(tab: AnalyticsTabId) {
     syncUrl(queryFilters, tab);
   }
 
+  function openFilters() {
+    setDraftFilters(appliedFilters);
+    setFiltersOpen(true);
+  }
+
+  function toggleFilters() {
+    if (filtersOpen) {
+      setFiltersOpen(false);
+      return;
+    }
+
+    openFilters();
+  }
+
   function handleFiltersChange(next: AnalyticsQuery) {
-    setFilters(next);
+    setDraftFilters(next);
+  }
 
-    const nextAccountId = next.tradingAccountId ?? "";
-    const currentAccountId = filters.tradingAccountId ?? accountId ?? "";
+  async function applyFilters() {
+    const nextAccountId = draftFilters.tradingAccountId ?? "";
 
-    if (nextAccountId !== currentAccountId) {
+    if (nextAccountId !== accountId) {
       setAccountId(nextAccountId);
     }
+
+    setAppliedFilters(draftFilters);
+    setFiltersOpen(false);
+
+    const nextQuery = buildQueryFromFilters(draftFilters);
+    syncUrl(nextQuery);
+    await loadAnalytics(nextQuery);
+  }
+
+  function clearFilters() {
+    const cleared: AnalyticsQuery = {
+      tradingAccountId: accountId || undefined,
+    };
+
+    setDraftFilters(cleared);
+    setAppliedFilters(cleared);
+    setFiltersOpen(false);
+
+    const nextQuery = buildQueryFromFilters(cleared);
+    syncUrl(nextQuery);
+    void loadAnalytics(nextQuery);
   }
 
   const loadAnalytics = useCallback(
     async (query: AnalyticsQuery = queryFilters) => {
       setIsLoading(true);
 
+      const failures: string[] = [];
+
       try {
-        const [
-          summaryResponse,
-          instrumentsResponse,
-          sessionPerformanceResponse,
-          strategiesResponse,
-          planComplianceResponse,
-          riskStatsResponse,
-          timeResponse,
-          heatmapResponse,
-          psychologyResponse,
-          mistakesResponse,
-          durationResponse,
-          rollingResponse,
-          comparisonResponse,
-          directionResponse,
-          behaviorResponse,
-          tagsResponse,
-          plannedRrResponse,
-          concentrationResponse,
-          executionResponse,
-          edgeFinderResponse,
-          insightsResponse,
-        ] = await Promise.all([
+        const results = await Promise.allSettled([
           getAnalyticsSummary(getAuthToken, query),
           getInstrumentPerformance(getAuthToken, query),
-          getSessionPerformance(getAuthToken, query),
+          getSessionDashboard(getAuthToken, query),
           getStrategyPerformance(getAuthToken, query),
           getPlanCompliance(getAuthToken, query),
           getRiskStats(getAuthToken, query),
@@ -317,42 +323,140 @@ export function AnalyticsManager({
             comparisonMode === "CUSTOM" ? customDates : undefined,
           ),
           getDirectionAnalytics(getAuthToken, query),
-          getBehaviorAnalytics(getAuthToken, query),
           getTagAnalytics(getAuthToken, query),
-          getPlannedRrAnalytics(getAuthToken, query),
           getConcentrationAnalytics(getAuthToken, query),
-          getExecutionAnalytics(getAuthToken, query),
-          getEdgeFinderAnalytics(getAuthToken, query),
           getInsightsAnalytics(getAuthToken, query),
         ]);
 
-        setSummary(summaryResponse.data);
-        setInstruments(instrumentsResponse.data);
-        setSessionPerformance(sessionPerformanceResponse.data);
-        setStrategyRows(strategiesResponse.data);
-        setPlanCompliance(planComplianceResponse.data);
-        setRiskStats(riskStatsResponse.data);
-        setTimeAnalytics(timeResponse.data);
-        setHeatmapCells(heatmapResponse.data.cells);
-        setPsychology(psychologyResponse.data);
-        setMistakeAnalytics(mistakesResponse.data);
-        setDurationAnalytics(durationResponse.data);
-        setRolling(rollingResponse.data);
-        setComparison(comparisonResponse.data);
-        setDirectionAnalytics(directionResponse.data);
-        setBehaviorAnalytics(behaviorResponse.data);
-        setTagAnalytics(tagsResponse.data);
-        setPlannedRrAnalytics(plannedRrResponse.data);
-        setConcentrationAnalytics(concentrationResponse.data);
-        setExecutionAnalytics(executionResponse.data);
-        setEdgeFinderAnalytics(edgeFinderResponse.data);
-        setInsightsAnalytics(insightsResponse.data);
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to refresh analytics.",
-        );
+        const [
+          summaryResult,
+          instrumentsResult,
+          sessionDashboardResult,
+          strategiesResult,
+          planComplianceResult,
+          riskStatsResult,
+          timeResult,
+          heatmapResult,
+          psychologyResult,
+          mistakesResult,
+          durationResult,
+          rollingResult,
+          comparisonResult,
+          directionResult,
+          tagsResult,
+          concentrationResult,
+          insightsResult,
+        ] = results;
+
+        if (summaryResult.status === "fulfilled") {
+          setSummary(summaryResult.value.data);
+        } else {
+          failures.push("overview");
+        }
+
+        if (instrumentsResult.status === "fulfilled") {
+          setInstruments(instrumentsResult.value.data);
+        } else {
+          failures.push("instruments");
+        }
+
+        if (sessionDashboardResult.status === "fulfilled") {
+          setSessionDashboard(sessionDashboardResult.value.data);
+        } else {
+          failures.push("sessions");
+        }
+
+        if (strategiesResult.status === "fulfilled") {
+          setStrategyRows(strategiesResult.value.data);
+        } else {
+          failures.push("strategies");
+        }
+
+        if (planComplianceResult.status === "fulfilled") {
+          setPlanCompliance(planComplianceResult.value.data);
+        } else {
+          failures.push("plan compliance");
+        }
+
+        if (riskStatsResult.status === "fulfilled") {
+          setRiskStats(riskStatsResult.value.data);
+        } else {
+          failures.push("risk");
+        }
+
+        if (timeResult.status === "fulfilled") {
+          setTimeAnalytics(timeResult.value.data);
+        } else {
+          failures.push("time");
+        }
+
+        if (heatmapResult.status === "fulfilled") {
+          setHeatmapCells(heatmapResult.value.data.cells);
+        } else {
+          failures.push("heatmap");
+        }
+
+        if (psychologyResult.status === "fulfilled") {
+          setPsychology(psychologyResult.value.data);
+        } else {
+          failures.push("psychology");
+        }
+
+        if (mistakesResult.status === "fulfilled") {
+          setMistakeAnalytics(mistakesResult.value.data);
+        } else {
+          failures.push("mistakes");
+        }
+
+        if (durationResult.status === "fulfilled") {
+          setDurationAnalytics(durationResult.value.data);
+        } else {
+          failures.push("duration");
+        }
+
+        if (rollingResult.status === "fulfilled") {
+          setRolling(rollingResult.value.data);
+        } else {
+          failures.push("rolling");
+        }
+
+        if (comparisonResult.status === "fulfilled") {
+          setComparison(comparisonResult.value.data);
+        } else {
+          failures.push("comparison");
+        }
+
+        if (directionResult.status === "fulfilled") {
+          setDirectionAnalytics(directionResult.value.data);
+        } else {
+          failures.push("direction");
+        }
+
+        if (tagsResult.status === "fulfilled") {
+          setTagAnalytics(tagsResult.value.data);
+        } else {
+          failures.push("tags");
+        }
+
+        if (concentrationResult.status === "fulfilled") {
+          setConcentrationAnalytics(concentrationResult.value.data);
+        } else {
+          failures.push("concentration");
+        }
+
+        if (insightsResult.status === "fulfilled") {
+          setInsightsAnalytics(insightsResult.value.data);
+        } else {
+          failures.push("insights");
+        }
+
+        if (failures.length > 0) {
+          toast.error(
+            failures.length === results.length
+              ? "Failed to load analytics."
+              : `Some analytics sections failed to load: ${failures.join(", ")}.`,
+          );
+        }
       } finally {
         setIsLoading(false);
       }
@@ -360,104 +464,22 @@ export function AnalyticsManager({
     [comparisonMode, customDates, getAuthToken, heatmapMetric, queryFilters],
   );
 
-  useEffect(() => {
-    if (hasHydratedFilters.current) {
-      return;
-    }
-
-    hasHydratedFilters.current = true;
-
-    if (Object.keys(initialFilters).length === 0) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      void loadAnalytics({
-        ...initialFilters,
-        tradingAccountId:
-          initialFilters.tradingAccountId ?? accountId ?? undefined,
-      });
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [accountId, initialFilters, loadAnalytics]);
-
-  async function applyFilters() {
-    syncUrl(queryFilters);
-    await loadAnalytics();
-  }
-
-  useInitialPersistedAccountLoad(isReady, () => loadAnalytics(), {
-    enabled: Boolean(accountId),
-    skip: shouldSkipServerMatchedAccountLoad(
-      accountId,
-      serverSelectedAccountId,
-    ),
-  });
+  useInitialPersistedAccountLoad(
+    isReady && isAuthLoaded,
+    () => loadAnalytics(),
+    { skip: false },
+  );
 
   useEffect(() => {
-    if (!deferSecondaryLoad || !isReady || secondaryLoadedRef.current) {
-      return;
+    function handleTimezoneChange() {
+      void loadAnalytics();
     }
 
-    let cancelled = false;
-
-    const loadSecondary = async () => {
-      try {
-        const secondary = await loadSecondaryAnalytics(
-          getAuthToken,
-          queryFilters,
-          heatmapMetric,
-        );
-
-        if (cancelled) {
-          return;
-        }
-
-        setInstruments(secondary.instruments);
-        setStrategyRows(secondary.strategyRows);
-        setRiskStats(secondary.riskStats);
-        setTimeAnalytics(secondary.timeAnalytics);
-        setHeatmapCells(secondary.heatmapCells);
-        setPsychology(secondary.psychology);
-        setMistakeAnalytics(secondary.mistakeAnalytics);
-        setDurationAnalytics(secondary.durationAnalytics);
-        setRolling(secondary.rolling);
-        setComparison(secondary.comparison);
-        setDirectionAnalytics(secondary.directionAnalytics);
-        setBehaviorAnalytics(secondary.behaviorAnalytics);
-        setTagAnalytics(secondary.tagAnalytics);
-        setPlannedRrAnalytics(secondary.plannedRrAnalytics);
-        setConcentrationAnalytics(secondary.concentrationAnalytics);
-        setExecutionAnalytics(secondary.executionAnalytics);
-        setEdgeFinderAnalytics(secondary.edgeFinderAnalytics);
-        setInsightsAnalytics(secondary.insightsAnalytics);
-        secondaryLoadedRef.current = true;
-      } catch {
-        // Overview remains usable; secondary tabs retry on next filter apply.
-      }
-    };
-
-    const schedule =
-      typeof window.requestIdleCallback === "function"
-        ? window.requestIdleCallback
-        : (callback: IdleRequestCallback) => window.setTimeout(callback, 0);
-
-    const idleId = schedule(() => {
-      void loadSecondary();
-    });
-
+    window.addEventListener(TIMEZONE_CHANGE_EVENT, handleTimezoneChange);
     return () => {
-      cancelled = true;
-      if (typeof window.cancelIdleCallback === "function") {
-        window.cancelIdleCallback(idleId);
-      } else {
-        window.clearTimeout(idleId);
-      }
+      window.removeEventListener(TIMEZONE_CHANGE_EVENT, handleTimezoneChange);
     };
-  }, [deferSecondaryLoad, getAuthToken, heatmapMetric, isReady, queryFilters]);
+  }, [loadAnalytics]);
 
   const mistakeRows = useMemo(
     () =>
@@ -465,6 +487,8 @@ export function AnalyticsManager({
         key: row.mistakeId,
         label: row.mistakeName,
         tradeCount: row.tradeCount,
+        winCount: row.winCount,
+        lossCount: row.lossCount,
         netPnl: row.netPnl,
         totalR: row.totalR,
         winRate: row.winRate,
@@ -483,6 +507,8 @@ export function AnalyticsManager({
         key: row.tagId,
         label: row.tagName,
         tradeCount: row.tradeCount,
+        winCount: row.winCount,
+        lossCount: row.lossCount,
         netPnl: row.netPnl,
         totalR: row.totalR,
         winRate: row.winRate,
@@ -493,24 +519,6 @@ export function AnalyticsManager({
         sampleConfidence: row.sampleConfidence,
       })),
     [tagAnalytics],
-  );
-
-  const sessionPerformanceRows = useMemo<TradeMetricsGroup[]>(
-    () =>
-      sessionPerformance.map((row) => ({
-        key: row.session,
-        label: row.sessionLabel,
-        tradeCount: row.tradeCount,
-        netPnl: row.netPnl,
-        totalR: row.totalR,
-        winRate: row.winRate,
-        averageR: row.averageR,
-        moneyExpectancy: row.moneyExpectancy,
-        rExpectancy: row.rExpectancy,
-        profitFactor: row.profitFactor,
-        sampleConfidence: row.sampleConfidence,
-      })),
-    [sessionPerformance],
   );
 
   async function handleHeatmapMetricChange(metric: HeatmapMetric) {
@@ -543,15 +551,19 @@ export function AnalyticsManager({
         strategies={strategies}
         tags={tags}
         mistakes={mistakes}
-        filters={filters}
+        draftFilters={draftFilters}
         accountId={accountId}
+        activeFilterCount={activeFilterCount}
+        filtersOpen={filtersOpen}
         isLoading={isLoading}
+        onToggleOpen={toggleFilters}
         onChange={handleFiltersChange}
         onApply={() => void applyFilters()}
+        onClear={() => void clearFilters()}
       />
 
       <div className="border-border flex flex-wrap gap-2 border-b pb-2">
-        {TABS.map((tab) => (
+        {ANALYTICS_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -578,15 +590,17 @@ export function AnalyticsManager({
               currency={currency}
             />
           </div>
-          <MetricsGroupsTable
-            title="Session performance"
-            description="Asia, London, London/NY overlap, New York, and off-hours in your profile timezone."
-            rows={sessionPerformanceRows}
-            currency={currency}
-            nameHeader="Session"
-          />
           <PlanComplianceCard groups={planCompliance} currency={currency} />
         </div>
+      ) : null}
+
+      {activeTab === "sessions" ? (
+        <SessionPerformancePanel
+          dashboard={sessionDashboard}
+          highlights={insightsAnalytics.highlights}
+          sessionSymbols={insightsAnalytics.sessionSymbols}
+          currency={currency}
+        />
       ) : null}
 
       {activeTab === "instruments" ? (
@@ -606,40 +620,52 @@ export function AnalyticsManager({
 
       {activeTab === "time" ? (
         <div className="space-y-6">
-          <MetricsGroupsTable
-            title="Trading sessions"
-            description="Asia, London, London/NY overlap, New York, and off-hours in your profile timezone."
-            rows={timeAnalytics.sessions}
-            currency={currency}
-            nameHeader="Session"
-          />
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Profile timezone</CardTitle>
+              <CardDescription>
+                Time windows use the same timezone as the header clock (
+                {timezoneLabel}). Current 2-hour window: {currentTwoHourWindow}.
+              </CardDescription>
+            </CardHeader>
+          </Card>
           <MetricsGroupsTable
             title="2-hour windows"
-            description="Closed-trade stats grouped by 2-hour entry windows."
-            rows={timeAnalytics.twoHourWindows}
+            description={`Closed-trade stats grouped by 2-hour entry (open) windows in ${timezoneLabel}. A trade is counted when it was opened during that window, not when it closed.`}
+            rows={localizedTimeAnalytics.twoHourWindows}
             currency={currency}
             nameHeader="Window"
+            showTimeEntries
+            showConfidence={false}
+            showRColumns={false}
           />
           <MetricsGroupsTable
             title="Hour of day"
-            description="Closed-trade stats grouped by entry hour."
-            rows={timeAnalytics.hours}
+            description={`Closed-trade stats grouped by entry (open) hour in ${timezoneLabel}.`}
+            rows={localizedTimeAnalytics.hours}
             currency={currency}
             nameHeader="Hour"
+            showTimeEntries
+            showConfidence={false}
+            showRColumns={false}
           />
           <MetricsGroupsTable
             title="Day of week"
             description="Closed-trade stats grouped by weekday."
-            rows={timeAnalytics.daysOfWeek}
+            rows={localizedTimeAnalytics.daysOfWeek}
             currency={currency}
             nameHeader="Day"
+            showConfidence={false}
+            showRColumns={false}
           />
           <MetricsGroupsTable
             title="Month"
             description="Closed-trade stats grouped by calendar month."
-            rows={timeAnalytics.months}
+            rows={localizedTimeAnalytics.months}
             currency={currency}
             nameHeader="Month"
+            showConfidence={false}
+            showRColumns={false}
           />
           <MetricsGroupsTable
             title="Trade duration"
@@ -647,17 +673,16 @@ export function AnalyticsManager({
             rows={durationAnalytics}
             currency={currency}
             nameHeader="Duration"
+            showConfidence={false}
+            showRColumns={false}
           />
           <TimeHeatmap
             cells={heatmapCells}
             metric={heatmapMetric}
+            timezoneLabel={timezoneLabel}
             onMetricChange={(metric) => void handleHeatmapMetricChange(metric)}
           />
         </div>
-      ) : null}
-
-      {activeTab === "insights" ? (
-        <InsightsAnalyticsPanel data={insightsAnalytics} currency={currency} />
       ) : null}
 
       {activeTab === "risk" ? (
@@ -715,14 +740,6 @@ export function AnalyticsManager({
         />
       ) : null}
 
-      {activeTab === "planned-rr" ? (
-        <PlannedRrPanel data={plannedRrAnalytics} currency={currency} />
-      ) : null}
-
-      {activeTab === "behavior" ? (
-        <BehaviorAnalyticsPanel data={behaviorAnalytics} currency={currency} />
-      ) : null}
-
       {activeTab === "mistakes" ? (
         <MetricsGroupsTable
           title="Mistake analytics"
@@ -731,14 +748,6 @@ export function AnalyticsManager({
           currency={currency}
           nameHeader="Mistake"
         />
-      ) : null}
-
-      {activeTab === "execution" ? (
-        <ExecutionAnalyticsPanel data={executionAnalytics} />
-      ) : null}
-
-      {activeTab === "edge-finder" ? (
-        <EdgeFinderPanel data={edgeFinderAnalytics} currency={currency} />
       ) : null}
 
       {activeTab === "compare" ? (
@@ -775,7 +784,12 @@ export function AnalyticsManager({
                     {rolling.currentWindow.netPnl}
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    {rolling.currentWindow.tradeCount} trades · win rate{" "}
+                    <TradeCountPhrase
+                      tradeCount={rolling.currentWindow.tradeCount}
+                      winCount={rolling.currentWindow.winCount}
+                      lossCount={rolling.currentWindow.lossCount}
+                    />
+                    {" · win rate "}
                     {rolling.currentWindow.winRate ?? "—"}%
                   </p>
                 </div>
@@ -787,7 +801,12 @@ export function AnalyticsManager({
                     {rolling.previousWindow.netPnl}
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    {rolling.previousWindow.tradeCount} trades · win rate{" "}
+                    <TradeCountPhrase
+                      tradeCount={rolling.previousWindow.tradeCount}
+                      winCount={rolling.previousWindow.winCount}
+                      lossCount={rolling.previousWindow.lossCount}
+                    />
+                    {" · win rate "}
                     {rolling.previousWindow.winRate ?? "—"}%
                   </p>
                 </div>

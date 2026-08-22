@@ -6,8 +6,14 @@ import type {
   EdgeFinderAnalytics,
   InsightsAnalytics,
   PlannedRrAnalytics,
+  SessionDashboard,
   TagAnalyticsGroup,
 } from "@/types/analytics";
+
+export const EMPTY_SESSION_DASHBOARD: SessionDashboard = {
+  sessions: [],
+  weekdayCells: [],
+};
 
 export const EMPTY_DIRECTION_ANALYTICS: DirectionAnalytics = {
   overall: [],
@@ -20,12 +26,16 @@ export const EMPTY_BEHAVIOR_ANALYTICS: BehaviorAnalytics = {
   afterLossesComparison: {
     lossStreakThreshold: 2,
     tradeCount: 0,
+    winCount: 0,
+    lossCount: 0,
     netPnl: "0.00",
     winRate: null,
     averageR: null,
     rExpectancy: null,
     sampleConfidence: "INSUFFICIENT",
     baselineTradeCount: 0,
+    baselineWinCount: 0,
+    baselineLossCount: 0,
     baselineWinRate: null,
     baselineNetPnl: "0.00",
   },

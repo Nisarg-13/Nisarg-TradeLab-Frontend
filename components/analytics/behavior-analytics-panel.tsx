@@ -1,6 +1,7 @@
 "use client";
 
 import { MetricsGroupsTable } from "@/components/analytics/metrics-groups-table";
+import { TradeCountPhrase } from "@/components/analytics/trade-count-display";
 import {
   Card,
   CardContent,
@@ -40,7 +41,12 @@ export function BehaviorAnalyticsPanel({
                 {afterLossesComparison.netPnl}
               </p>
               <p className="text-muted-foreground text-sm">
-                {afterLossesComparison.tradeCount} trades · win rate{" "}
+                <TradeCountPhrase
+                  tradeCount={afterLossesComparison.tradeCount}
+                  winCount={afterLossesComparison.winCount}
+                  lossCount={afterLossesComparison.lossCount}
+                />
+                {" · win rate "}
                 {afterLossesComparison.winRate ?? "—"}%
               </p>
             </div>
@@ -52,7 +58,12 @@ export function BehaviorAnalyticsPanel({
                 {afterLossesComparison.baselineNetPnl}
               </p>
               <p className="text-muted-foreground text-sm">
-                {afterLossesComparison.baselineTradeCount} trades · win rate{" "}
+                <TradeCountPhrase
+                  tradeCount={afterLossesComparison.baselineTradeCount}
+                  winCount={afterLossesComparison.baselineWinCount}
+                  lossCount={afterLossesComparison.baselineLossCount}
+                />
+                {" · win rate "}
                 {afterLossesComparison.baselineWinRate ?? "—"}%
               </p>
             </div>

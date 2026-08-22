@@ -8,6 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
+import { formatTradesPhrase } from "@/lib/formatting/trade-count";
+import { formatHour24 } from "@/lib/formatting/time-windows";
 import { pnlSurfaceClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
 import type { HeatmapCell, HeatmapMetric } from "@/types/analytics";
@@ -51,10 +53,12 @@ function cellTone(cell: HeatmapCell, metric: HeatmapMetric) {
 export function TimeHeatmap({
   cells,
   metric,
+  timezoneLabel,
   onMetricChange,
 }: {
   cells: HeatmapCell[];
   metric: HeatmapMetric;
+  timezoneLabel?: string;
   onMetricChange: (metric: HeatmapMetric) => void;
 }) {
   const maxTradeCount = Math.max(...cells.map((cell) => cell.tradeCount), 1);
@@ -65,8 +69,9 @@ export function TimeHeatmap({
         <div>
           <CardTitle>Time heatmap</CardTitle>
           <CardDescription>
-            Day of week by hour. Tooltip sample size comes from trade count per
-            cell.
+            Day of week by hour
+            {timezoneLabel ? ` in ${timezoneLabel}` : ""}. Tooltip sample size
+            comes from trade count per cell.
           </CardDescription>
         </div>
         <DropdownSelect
@@ -83,7 +88,7 @@ export function TimeHeatmap({
             <div />
             {Array.from({ length: 24 }, (_, hour) => (
               <div key={hour} className="text-muted-foreground tabular-data">
-                {hour}
+                {formatHour24(hour).slice(0, 2)}
               </div>
             ))}
           </div>
@@ -119,7 +124,7 @@ export function TimeHeatmap({
                 return (
                   <div
                     key={`${dayLabel}-${hour}`}
-                    title={`${dayLabel} ${hour}:00 · ${cell.tradeCount} trades · PnL ${cell.netPnl}`}
+                    title={`${dayLabel} ${formatHour24(hour)} · ${formatTradesPhrase({ tradeCount: cell.tradeCount, winCount: cell.winCount, lossCount: cell.lossCount })} · PnL ${cell.netPnl}`}
                     className={cn(
                       "flex h-8 items-center justify-center rounded border text-[10px]",
                       cellTone(cell, metric),

@@ -22,6 +22,7 @@ export type AnalyticsQuery = {
   riskMax?: string;
   session?: "ASIA" | "LONDON" | "OVERLAP" | "NEW_YORK" | "OFF_HOURS";
   result?: "WIN" | "LOSS" | "BREAKEVEN";
+  timezone?: string;
 };
 
 export type HeatmapMetric =
@@ -107,6 +108,8 @@ export type AnalyticsSummary = {
 
 export type GroupedPerformanceMetrics = {
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   grossProfit: string;
   grossLoss: string;
@@ -136,6 +139,8 @@ export type SessionPerformance = {
   session: string;
   sessionLabel: string;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   totalR: string | null;
   winRate: string | null;
@@ -146,10 +151,30 @@ export type SessionPerformance = {
   sampleConfidence: SampleConfidence;
 };
 
+export type SessionWeekdayCell = {
+  session: string;
+  sessionLabel: string;
+  dayOfWeek: number;
+  dayLabel: string;
+  tradeCount: number;
+  winCount: number;
+  lossCount: number;
+  netPnl: string;
+  winRate: string | null;
+  moneyExpectancy: string | null;
+};
+
+export type SessionDashboard = {
+  sessions: SessionPerformance[];
+  weekdayCells: SessionWeekdayCell[];
+};
+
 export type DirectionSideMetrics = {
   direction: "LONG" | "SHORT";
   label: string;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   totalR: string | null;
   winRate: string | null;
@@ -171,12 +196,16 @@ export type DirectionAnalytics = {
 export type AfterLossesComparison = {
   lossStreakThreshold: number;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   winRate: string | null;
   averageR: string | null;
   rExpectancy: string | null;
   sampleConfidence: SampleConfidence;
   baselineTradeCount: number;
+  baselineWinCount: number;
+  baselineLossCount: number;
   baselineWinRate: string | null;
   baselineNetPnl: string;
 };
@@ -205,6 +234,8 @@ export type PlanComplianceGroup = {
   label: string;
   planCompliance: PlanComplianceStatus;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   winRate: string | null;
   averageR: string | null;
@@ -218,6 +249,8 @@ export type TagAnalyticsGroup = {
   tagId: string;
   tagName: string;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   totalR: string | null;
   averageR: string | null;
@@ -246,6 +279,8 @@ export type RiskStatGroup = {
   riskPercentageMin: string | null;
   riskPercentageMax: string | null;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   winRate: string | null;
   averageR: string | null;
@@ -255,10 +290,19 @@ export type RiskStatGroup = {
   sampleConfidence: SampleConfidence;
 };
 
+export type TimeMetricsGroupEntry = {
+  tradeId: string;
+  symbol: string;
+  openedAt: string;
+  openedAtLocal: string;
+};
+
 export type TradeMetricsGroup = {
   key: string;
   label: string;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   totalR: string | null;
   winRate: string | null;
@@ -267,6 +311,7 @@ export type TradeMetricsGroup = {
   rExpectancy: string | null;
   profitFactor: string | null;
   sampleConfidence: SampleConfidence;
+  entries?: TimeMetricsGroupEntry[];
 };
 
 export type TimeAnalytics = {
@@ -281,6 +326,8 @@ export type HeatmapCell = {
   dayOfWeek: number;
   hour: number;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   averageR: string | null;
   winRate: string | null;
@@ -304,6 +351,8 @@ export type MistakeAnalyticsGroup = {
   mistakeId: string;
   mistakeName: string;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   totalR: string | null;
   averageR: string | null;
@@ -332,6 +381,8 @@ export type RollingPerformance = {
 export type PeriodMetrics = {
   label: string;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   totalR: string | null;
   winRate: string | null;
@@ -453,6 +504,8 @@ export type SessionSymbolRow = {
   sessionLabel: string;
   symbol: string;
   tradeCount: number;
+  winCount: number;
+  lossCount: number;
   netPnl: string;
   totalR: string | null;
   winRate: string | null;

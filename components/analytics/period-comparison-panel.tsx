@@ -11,6 +11,7 @@ import {
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatTradeCountInline } from "@/lib/formatting/trade-count";
 import { formatMoney } from "@/lib/formatting/currency";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
@@ -155,6 +156,12 @@ export function PeriodComparisonPanel({
               </tr>
             </thead>
             <tbody>
+              <MetricRow
+                label="Trades"
+                periodA={formatTradeCountInline(comparison.periodA)}
+                periodB={formatTradeCountInline(comparison.periodB)}
+                delta={null}
+              />
               <MetricRow
                 label="Net PnL"
                 periodA={formatMoney(comparison.periodA.netPnl, currency)}

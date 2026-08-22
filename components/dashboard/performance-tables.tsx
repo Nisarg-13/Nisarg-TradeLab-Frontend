@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
+import { TradeCountDisplay } from "@/components/analytics/trade-count-display";
 import { formatMoney } from "@/lib/formatting/currency";
 import { pnlTextClass } from "@/lib/formatting/pnl-tone";
 import { cn } from "@/lib/utils";
@@ -22,8 +23,6 @@ import type {
 
 const SORT_OPTIONS: Array<{ value: PerformanceSortKey; label: string }> = [
   { value: "netPnl", label: "Net PnL" },
-  { value: "totalR", label: "Total R" },
-  { value: "averageR", label: "Average R" },
   { value: "rExpectancy", label: "R expectancy" },
   { value: "profitFactor", label: "Profit factor" },
   { value: "winRate", label: "Win rate" },
@@ -34,10 +33,6 @@ function sortValue(row: GroupedPerformanceMetrics, key: PerformanceSortKey) {
   switch (key) {
     case "tradeCount":
       return row.tradeCount;
-    case "totalR":
-      return row.totalR ? Number(row.totalR) : Number.NEGATIVE_INFINITY;
-    case "averageR":
-      return row.averageR ? Number(row.averageR) : Number.NEGATIVE_INFINITY;
     case "rExpectancy":
       return row.rExpectancy
         ? Number(row.rExpectancy)
@@ -89,10 +84,9 @@ function EnrichedPerformanceTable({
         <DropdownSelect
           id={`${title}-sort`}
           name={`${title}-sort`}
-          options={SORT_OPTIONS.map((option) => ({
-            value: option.value,
-            label: `Sort: ${option.label}`,
-          }))}
+          className="w-[11.5rem] shrink-0 self-start sm:self-auto"
+          triggerPrefix="Sort: "
+          options={SORT_OPTIONS}
           value={sortKey}
           onValueChange={(value) => setSortKey(value as PerformanceSortKey)}
         />
@@ -101,17 +95,14 @@ function EnrichedPerformanceTable({
         {sortedRows.length === 0 ? (
           <p className="text-muted-foreground text-sm">No data yet.</p>
         ) : (
-          <table className="w-full min-w-[960px] text-sm">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="text-muted-foreground border-b text-left">
                 <th className="pb-2 font-medium">{nameHeader}</th>
                 <th className="pb-2 font-medium">Trades</th>
                 <th className="pb-2 font-medium">Net PnL</th>
-                <th className="pb-2 font-medium">Total R</th>
-                <th className="pb-2 font-medium">Avg R</th>
                 <th className="pb-2 font-medium">Win rate</th>
                 <th className="pb-2 font-medium">PF</th>
-                <th className="pb-2 font-medium">Long / Short</th>
               </tr>
             </thead>
             <tbody>
@@ -121,7 +112,13 @@ function EnrichedPerformanceTable({
                   className="border-b last:border-0"
                 >
                   <td className="py-3 font-medium">{getName(row, index)}</td>
-                  <td className="tabular-data py-3">{row.tradeCount}</td>
+                  <td className="py-3">
+                    <TradeCountDisplay
+                      tradeCount={row.tradeCount}
+                      winCount={row.winCount}
+                      lossCount={row.lossCount}
+                    />
+                  </td>
                   <td
                     className={cn(
                       "tabular-data py-3",
@@ -131,26 +128,10 @@ function EnrichedPerformanceTable({
                     {formatMoney(row.netPnl, currency)}
                   </td>
                   <td className="tabular-data py-3">
-                    {row.totalR ? `${row.totalR}R` : "—"}
-                  </td>
-                  <td className="tabular-data py-3">
-                    {row.averageR ? `${row.averageR}R` : "—"}
-                  </td>
-                  <td className="tabular-data py-3">
                     {row.winRate ? `${Number(row.winRate).toFixed(1)}%` : "—"}
                   </td>
                   <td className="tabular-data py-3">
                     {row.profitFactor ?? "—"}
-                  </td>
-                  <td className="text-muted-foreground py-3 text-xs">
-                    {row.longTradeCount}L / {row.shortTradeCount}S ·{" "}
-                    <span className={pnlTextClass(row.longNetPnl)}>
-                      {formatMoney(row.longNetPnl, currency)}
-                    </span>
-                    {" / "}
-                    <span className={pnlTextClass(row.shortNetPnl)}>
-                      {formatMoney(row.shortNetPnl, currency)}
-                    </span>
                   </td>
                 </tr>
               ))}
@@ -172,7 +153,7 @@ export function InstrumentPerformanceTable({
   return (
     <EnrichedPerformanceTable
       title="Instrument performance"
-      description="Closed-trade stats grouped by symbol, with long/short split."
+      description="Closed-trade stats grouped by symbol."
       nameHeader="Instrument"
       currency={currency}
       rows={rows}
@@ -191,7 +172,7 @@ export function StrategyPerformanceTable({
   return (
     <EnrichedPerformanceTable
       title="Strategy performance"
-      description="Closed-trade stats grouped by strategy, with long/short split."
+      description="Closed-trade stats grouped by strategy."
       nameHeader="Strategy"
       currency={currency}
       rows={rows}

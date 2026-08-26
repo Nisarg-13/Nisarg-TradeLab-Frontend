@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,7 +20,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
-import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
+import {
+  usePersistedAccountId,
+  useInitialPersistedAccountLoad,
+} from "@/lib/hooks/use-persisted-account-id";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
@@ -73,10 +76,6 @@ const EMPTY_FILTERS: TradeListFilters = {
 function countActiveFilters(filters: TradeListFilters) {
   let count = 0;
 
-  if (filters.accountId) {
-    count += 1;
-  }
-
   if (filters.symbol.trim()) {
     count += 1;
   }
@@ -124,7 +123,6 @@ export function TradesManager({
     useState<TradeListFilters>(EMPTY_FILTERS);
   const [draftFilters, setDraftFilters] =
     useState<TradeListFilters>(EMPTY_FILTERS);
-  const didInitializeRef = useRef(false);
 
   const [page, setPage] = useState(initialMeta.page);
   const [pageSize] = useState(PAGE_SIZE);
@@ -172,6 +170,7 @@ export function TradesManager({
         setMeta(response.meta);
         setPage(response.meta.page);
         setAppliedFilters(nextFilters);
+        setDraftFilters(nextFilters);
         setSelectedTradeIds((current) =>
           current.filter((id) =>
             response.data.some((trade) => trade.id === id),
@@ -188,30 +187,26 @@ export function TradesManager({
     [appliedFilters, getAuthToken, page, pageSize],
   );
 
-  useEffect(() => {
-    if (!isReady || didInitializeRef.current) {
-      return;
-    }
+  const handleApplyAccount = useCallback(async () => {
+    const nextFilters = { ...appliedFilters, accountId };
+    await loadTrades(1, pageSize, nextFilters);
+  }, [accountId, appliedFilters, loadTrades, pageSize]);
 
-    didInitializeRef.current = true;
-    const initialFilters = { ...EMPTY_FILTERS, accountId };
-    setAppliedFilters(initialFilters);
-    setDraftFilters(initialFilters);
-
-    if (
-      shouldSkipServerMatchedAccountLoad(accountId, serverSelectedAccountId)
-    ) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      void loadTrades(1, PAGE_SIZE, initialFilters);
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [accountId, isReady, loadTrades, serverSelectedAccountId]);
+  useInitialPersistedAccountLoad(
+    isReady,
+    () => {
+      const initialFilters = { ...EMPTY_FILTERS, accountId };
+      setAppliedFilters(initialFilters);
+      setDraftFilters(initialFilters);
+      return loadTrades(1, PAGE_SIZE, initialFilters);
+    },
+    {
+      skip: shouldSkipServerMatchedAccountLoad(
+        accountId,
+        serverSelectedAccountId,
+      ),
+    },
+  );
 
   function openFilters() {
     setDraftFilters(appliedFilters);
@@ -219,12 +214,9 @@ export function TradesManager({
   }
 
   function applyFilters() {
-    if (draftFilters.accountId !== accountId) {
-      setAccountId(draftFilters.accountId);
-    }
-
+    const nextFilters = { ...draftFilters, accountId };
     setFiltersOpen(false);
-    void loadTrades(1, pageSize, draftFilters);
+    void loadTrades(1, pageSize, nextFilters);
   }
 
   function clearFilters() {
@@ -241,14 +233,38 @@ export function TradesManager({
   }
 
   const activeFilterCount = countActiveFilters(appliedFilters);
+  const selectedAccountName = accounts.find(
+    (account) => account.id === appliedFilters.accountId,
+  )?.name;
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Journal"
-        title="Trades"
-        description="Browse, filter, and review your open and closed trades."
-      />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <PageHeader
+          eyebrow="Journal"
+          title="Trades"
+          description="Browse, filter, and review your open and closed trades."
+        />
+        <div className="flex w-full max-w-md flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="flex-1 space-y-2">
+            <Label htmlFor="trades-account">Account</Label>
+            <DropdownSelect
+              id="trades-account"
+              name="trades-account"
+              options={accountOptions}
+              value={accountId}
+              onValueChange={setAccountId}
+            />
+          </div>
+          <Button
+            type="button"
+            disabled={isLoading}
+            onClick={() => void handleApplyAccount()}
+          >
+            {isLoading ? "Loading..." : "Apply"}
+          </Button>
+        </div>
+      </div>
 
       <Card>
         <CardHeader
@@ -261,6 +277,7 @@ export function TradesManager({
             <CardTitle className="leading-snug">All trades</CardTitle>
             <CardDescription>
               {meta.total} trade{meta.total === 1 ? "" : "s"} total
+              {selectedAccountName ? ` · ${selectedAccountName}` : ""}
               {selectedTradeIds.length > 0
                 ? ` · ${selectedTradeIds.length} selected`
                 : ""}
@@ -303,21 +320,6 @@ export function TradesManager({
         {filtersOpen ? (
           <div className="bg-muted/20 border-b px-6 py-5">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="filter-account">Account</Label>
-                <DropdownSelect
-                  id="filter-account"
-                  name="filter-account"
-                  options={accountOptions}
-                  value={draftFilters.accountId}
-                  onValueChange={(value) =>
-                    setDraftFilters((current) => ({
-                      ...current,
-                      accountId: value,
-                    }))
-                  }
-                />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="filter-symbol">Symbol</Label>
                 <Input

@@ -18,6 +18,7 @@ type DropdownSelectProps = {
   value?: string;
   onValueChange?: (value: string) => void;
   required?: boolean;
+  disabled?: boolean;
   className?: string;
   menuPlacement?: "top" | "bottom" | "auto";
   /** Prepended to the trigger label only (not menu items). */
@@ -36,6 +37,7 @@ export function DropdownSelect({
   value,
   onValueChange,
   required,
+  disabled = false,
   className,
   menuPlacement = "auto",
   triggerPrefix = "",
@@ -103,6 +105,10 @@ export function DropdownSelect({
   }
 
   function toggleOpen() {
+    if (disabled) {
+      return;
+    }
+
     setOpen((current) => {
       const nextOpen = !current;
 
@@ -127,8 +133,12 @@ export function DropdownSelect({
         id={id}
         aria-haspopup="listbox"
         aria-expanded={open}
+        disabled={disabled}
         onClick={toggleOpen}
-        className="border-input bg-background hover:bg-muted/50 flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors"
+        className={cn(
+          "border-input bg-background flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+          disabled ? "cursor-not-allowed opacity-50" : "hover:bg-muted/50",
+        )}
       >
         <span className="truncate">
           {triggerPrefix}

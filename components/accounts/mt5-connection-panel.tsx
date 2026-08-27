@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -19,6 +20,7 @@ import {
   revokeMt5Connection,
 } from "@/lib/api/mt5";
 import { useClientAuthToken } from "@/lib/auth/client";
+import { dispatchTradeDataRefresh } from "@/lib/constants/trade-data-refresh";
 import { cn } from "@/lib/utils";
 import type {
   LiveDataStatus,
@@ -60,9 +62,9 @@ export function Mt5ConnectionPanel({
   accountName: string;
   initialConnection: Mt5Connection | null;
 }) {
+  const router = useRouter();
   const getAuthToken = useClientAuthToken();
   const [connection, setConnection] = useState(initialConnection);
-  const [connectionKey, setConnectionKey] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
 
   async function refreshConnection() {
@@ -83,11 +85,12 @@ export function Mt5ConnectionPanel({
         getAuthToken,
         tradingAccountId,
       );
-      setConnection(response.data.connection);
-      setConnectionKey(response.data.connectionKey);
-      toast.success(
-        "MT5 connection key created. Copy it now — it won't be shown again.",
-      );
+      setConnection({
+        ...response.data.connection,
+        connectionKey:
+          response.data.connection.connectionKey ?? response.data.connectionKey,
+      });
+      toast.success("MT5 connection key created.");
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -107,7 +110,6 @@ export function Mt5ConnectionPanel({
     try {
       await revokeMt5Connection(getAuthToken, connection.id);
       setConnection(null);
-      setConnectionKey(null);
       await refreshConnection();
       toast.success("MT5 connection revoked.");
     } catch (error) {
@@ -136,6 +138,8 @@ export function Mt5ConnectionPanel({
           ? `Removed ${response.data.removedDuplicates} duplicate executions and recalculated ${response.data.updated} trades.`
           : `Recalculated ${response.data.updated} of ${response.data.total} MT5 trades.`,
       );
+      dispatchTradeDataRefresh();
+      router.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -148,10 +152,10 @@ export function Mt5ConnectionPanel({
   }
 
   async function copyKey() {
-    if (!connectionKey) return;
+    if (!connection?.connectionKey) return;
 
     try {
-      await navigator.clipboard.writeText(connectionKey);
+      await navigator.clipboard.writeText(connection.connectionKey);
       toast.success("Connection key copied.");
     } catch {
       toast.error("Unable to copy automatically. Copy the key manually.");
@@ -174,8 +178,8 @@ export function Mt5ConnectionPanel({
       <CardHeader>
         <CardTitle>MT5 Connection</CardTitle>
         <CardDescription>
-          Pair the TradeLab sync EA with {accountName}. Keys are shown once at
-          creation.
+          Pair the TradeLab sync EA with {accountName}. Your connection key
+          stays saved here so you can copy it anytime.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -234,10 +238,16 @@ export function Mt5ConnectionPanel({
           </p>
         )}
 
-        {connectionKey ? (
+        {connection?.connectionKey ? (
           <div className="border-primary/30 bg-primary/5 rounded-lg border p-4">
-            <p className="text-sm font-medium">One-time connection key</p>
-            <p className="mt-2 font-mono text-sm break-all">{connectionKey}</p>
+            <p className="text-sm font-medium">Connection key</p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Paste this into the EA{" "}
+              <span className="font-mono">ConnectionKey</span> input.
+            </p>
+            <p className="mt-2 font-mono text-sm break-all">
+              {connection.connectionKey}
+            </p>
             <Button
               type="button"
               variant="outline"
@@ -247,6 +257,11 @@ export function Mt5ConnectionPanel({
               Copy key
             </Button>
           </div>
+        ) : connection ? (
+          <p className="text-muted-foreground rounded-lg border p-4 text-sm">
+            This connection does not have a saved key. Revoke it and generate a
+            new connection key to keep it visible here.
+          </p>
         ) : null}
 
         {mt5ApiBaseUrl ? (

@@ -30,6 +30,7 @@ import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
 } from "@/lib/hooks/use-persisted-account-id";
+import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import type { TradingAccount } from "@/types/account";
 import type {
@@ -134,6 +135,8 @@ export function DashboardManager({
       serverSelectedAccountId,
     ),
   });
+
+  useTradeDataRefresh(isReady, handleApplyFilter);
 
   return (
     <div className="space-y-6">

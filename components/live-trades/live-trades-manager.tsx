@@ -21,6 +21,7 @@ import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
 } from "@/lib/hooks/use-persisted-account-id";
+import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import { useFormatDateTime } from "@/lib/hooks/use-format-datetime";
 import { cn } from "@/lib/utils";
@@ -151,6 +152,8 @@ export function LiveTradesManager({
       serverSelectedAccountId,
     ),
   });
+
+  useTradeDataRefresh(isReady, () => refreshLiveTrades({ silent: true }));
 
   const pollIntervalSeconds = LIVE_TRADES_POLL_INTERVAL_MS / 1_000;
 

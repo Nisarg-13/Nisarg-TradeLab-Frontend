@@ -63,6 +63,7 @@ import {
   useInitialPersistedAccountLoad,
   usePersistedAccountId,
 } from "@/lib/hooks/use-persisted-account-id";
+import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import {
   TIMEZONE_CHANGE_EVENT,
   getTimezoneLabel,
@@ -469,6 +470,8 @@ export function AnalyticsManager({
     () => loadAnalytics(),
     { skip: false },
   );
+
+  useTradeDataRefresh(isReady && isAuthLoaded, () => loadAnalytics());
 
   useEffect(() => {
     function handleTimezoneChange() {

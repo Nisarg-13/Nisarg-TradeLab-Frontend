@@ -24,6 +24,7 @@ import {
   usePersistedAccountId,
   useInitialPersistedAccountLoad,
 } from "@/lib/hooks/use-persisted-account-id";
+import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
@@ -207,6 +208,12 @@ export function TradesManager({
       ),
     },
   );
+
+  const refreshTrades = useCallback(() => {
+    return loadTrades(page, pageSize, appliedFilters);
+  }, [appliedFilters, loadTrades, page, pageSize]);
+
+  useTradeDataRefresh(isReady, refreshTrades);
 
   function openFilters() {
     setDraftFilters(appliedFilters);

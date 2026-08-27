@@ -20,6 +20,7 @@ export type Mt5Connection = {
   lastPositionSnapshotAt?: string | null;
   liveDataStatus?: "LIVE" | "STALE" | "DISCONNECTED";
   eaVersion: string | null;
+  connectionKey?: string | null;
   createdAt: string;
   updatedAt: string;
 };

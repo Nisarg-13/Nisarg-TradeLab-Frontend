@@ -12,7 +12,6 @@ export function useAutoReloadOnAccountChange(
   },
 ) {
   const onReloadRef = useRef(onReload);
-  const skipInitialRef = useRef(options?.skipInitial ?? false);
   const consumeSkipReloadRef = useRef(options?.consumeSkipReload);
   const isFirstRunRef = useRef(true);
 
@@ -31,7 +30,7 @@ export function useAutoReloadOnAccountChange(
 
     if (isFirstRunRef.current) {
       isFirstRunRef.current = false;
-      if (skipInitialRef.current) {
+      if (options?.skipInitial ?? false) {
         return;
       }
     }
@@ -41,5 +40,5 @@ export function useAutoReloadOnAccountChange(
     }
 
     void onReloadRef.current();
-  }, [accountId, isReady]);
+  }, [accountId, isReady, options?.skipInitial]);
 }

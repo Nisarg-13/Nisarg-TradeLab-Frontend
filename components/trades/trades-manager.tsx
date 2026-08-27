@@ -23,7 +23,6 @@ import { useClientAuthToken } from "@/lib/auth/client";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
 import { useAutoReloadOnAccountChange } from "@/lib/hooks/use-auto-reload-on-account-change";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
-import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
@@ -118,10 +117,16 @@ export function TradesManager({
   const [meta, setMeta] = useState(initialMeta);
   const [isLoading, setIsLoading] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [appliedFilters, setAppliedFilters] =
-    useState<TradeListFilters>(EMPTY_FILTERS);
-  const [draftFilters, setDraftFilters] =
-    useState<TradeListFilters>(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<TradeListFilters>(
+    () => ({
+      ...EMPTY_FILTERS,
+      accountId: serverSelectedAccountId,
+    }),
+  );
+  const [draftFilters, setDraftFilters] = useState<TradeListFilters>(() => ({
+    ...EMPTY_FILTERS,
+    accountId: serverSelectedAccountId,
+  }));
 
   const [page, setPage] = useState(initialMeta.page);
   const [pageSize] = useState(PAGE_SIZE);
@@ -186,21 +191,26 @@ export function TradesManager({
     [appliedFilters, getAuthToken, page, pageSize],
   );
 
+  const filtersWithAccount = useCallback(
+    (filters: TradeListFilters = appliedFilters) => ({
+      ...filters,
+      accountId,
+    }),
+    [accountId, appliedFilters],
+  );
+
   const reloadTradesForAccount = useCallback(async () => {
-    const nextFilters = { ...appliedFilters, accountId };
-    await loadTrades(1, pageSize, nextFilters);
-  }, [accountId, appliedFilters, loadTrades, pageSize]);
+    await loadTrades(1, pageSize, filtersWithAccount());
+  }, [filtersWithAccount, loadTrades, pageSize]);
 
   useAutoReloadOnAccountChange(isReady, accountId, reloadTradesForAccount, {
-    skipInitial: shouldSkipServerMatchedAccountLoad(
-      accountId,
-      serverSelectedAccountId,
-    ),
+    // Always refetch when an account is selected — SSR may not match the filter state.
+    skipInitial: !accountId,
   });
 
   const refreshTrades = useCallback(() => {
-    return loadTrades(page, pageSize, appliedFilters);
-  }, [appliedFilters, loadTrades, page, pageSize]);
+    return loadTrades(page, pageSize, filtersWithAccount());
+  }, [filtersWithAccount, loadTrades, page, pageSize]);
 
   useTradeDataRefresh(isReady, refreshTrades);
 
@@ -210,13 +220,13 @@ export function TradesManager({
   }
 
   function applyFilters() {
-    const nextFilters = { ...draftFilters, accountId };
+    const nextFilters = filtersWithAccount(draftFilters);
     setFiltersOpen(false);
     void loadTrades(1, pageSize, nextFilters);
   }
 
   function clearFilters() {
-    const cleared = { ...EMPTY_FILTERS, accountId };
+    const cleared = filtersWithAccount(EMPTY_FILTERS);
     setDraftFilters(cleared);
     setAppliedFilters(cleared);
     setFiltersOpen(false);
@@ -224,13 +234,16 @@ export function TradesManager({
   }
 
   function handleSortChange(nextSort: TradeSort) {
-    const nextFilters = { ...appliedFilters, sort: nextSort };
+    const nextFilters = filtersWithAccount({
+      ...appliedFilters,
+      sort: nextSort,
+    });
     void loadTrades(1, pageSize, nextFilters);
   }
 
   const activeFilterCount = countActiveFilters(appliedFilters);
   const selectedAccountName = accounts.find(
-    (account) => account.id === appliedFilters.accountId,
+    (account) => account.id === (appliedFilters.accountId || accountId),
   )?.name;
 
   return (
@@ -410,7 +423,7 @@ export function TradesManager({
           ) : (
             <TradesTable
               trades={trades}
-              showAccount={!appliedFilters.accountId}
+              showAccount={!(appliedFilters.accountId || accountId)}
               emptyMessage="No trades match these filters."
               selectable
               selectedTradeIds={selectedTradeIds}
@@ -433,7 +446,9 @@ export function TradesManager({
                   variant="outline"
                   size="sm"
                   disabled={page <= 1 || isLoading}
-                  onClick={() => void loadTrades(page - 1)}
+                  onClick={() =>
+                    void loadTrades(page - 1, pageSize, filtersWithAccount())
+                  }
                 >
                   Previous
                 </Button>
@@ -445,7 +460,9 @@ export function TradesManager({
                   variant="outline"
                   size="sm"
                   disabled={page >= meta.totalPages || isLoading}
-                  onClick={() => void loadTrades(page + 1)}
+                  onClick={() =>
+                    void loadTrades(page + 1, pageSize, filtersWithAccount())
+                  }
                 >
                   Next
                 </Button>

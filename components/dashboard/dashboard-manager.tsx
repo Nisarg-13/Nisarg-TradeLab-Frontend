@@ -14,7 +14,6 @@ import {
 } from "@/components/dashboard/performance-tables";
 import { RecentTradesCard } from "@/components/dashboard/recent-trades-card";
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
-import { Button } from "@/components/ui/button";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,10 +25,8 @@ import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
 import { useLiveTradesRefresh } from "@/lib/hooks/use-live-trades-refresh";
 import { useFormatDateTime } from "@/lib/hooks/use-format-datetime";
-import {
-  useInitialPersistedAccountLoad,
-  usePersistedAccountId,
-} from "@/lib/hooks/use-persisted-account-id";
+import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
+import { useAutoReloadOnAccountChange } from "@/lib/hooks/use-auto-reload-on-account-change";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import type { TradingAccount } from "@/types/account";
@@ -128,9 +125,8 @@ export function DashboardManager({
     }
   }, [accountId, getAuthToken, refreshLiveTrades]);
 
-  useInitialPersistedAccountLoad(isReady, () => handleApplyFilter(), {
-    enabled: Boolean(accountId),
-    skip: shouldSkipServerMatchedAccountLoad(
+  useAutoReloadOnAccountChange(isReady, accountId, handleApplyFilter, {
+    skipInitial: shouldSkipServerMatchedAccountLoad(
       accountId,
       serverSelectedAccountId,
     ),
@@ -150,24 +146,16 @@ export function DashboardManager({
           }
           description="Performance overview powered by backend analytics."
         />
-        <div className="flex w-full max-w-md flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="flex-1 space-y-2">
-            <Label htmlFor="dashboard-account">Account</Label>
-            <DropdownSelect
-              id="dashboard-account"
-              name="dashboard-account"
-              options={accountOptions}
-              value={accountId}
-              onValueChange={setAccountId}
-            />
-          </div>
-          <Button
-            type="button"
+        <div className="w-full max-w-md space-y-2">
+          <Label htmlFor="dashboard-account">Account</Label>
+          <DropdownSelect
+            id="dashboard-account"
+            name="dashboard-account"
+            options={accountOptions}
+            value={accountId}
+            onValueChange={setAccountId}
             disabled={isLoading}
-            onClick={() => void handleApplyFilter()}
-          >
-            {isLoading ? "Loading..." : "Apply"}
-          </Button>
+          />
         </div>
       </div>
 

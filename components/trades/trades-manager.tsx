@@ -20,10 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
-import {
-  usePersistedAccountId,
-  useInitialPersistedAccountLoad,
-} from "@/lib/hooks/use-persisted-account-id";
+import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
+import { useAutoReloadOnAccountChange } from "@/lib/hooks/use-auto-reload-on-account-change";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import { cn } from "@/lib/utils";
@@ -188,26 +186,17 @@ export function TradesManager({
     [appliedFilters, getAuthToken, page, pageSize],
   );
 
-  const handleApplyAccount = useCallback(async () => {
+  const reloadTradesForAccount = useCallback(async () => {
     const nextFilters = { ...appliedFilters, accountId };
     await loadTrades(1, pageSize, nextFilters);
   }, [accountId, appliedFilters, loadTrades, pageSize]);
 
-  useInitialPersistedAccountLoad(
-    isReady,
-    () => {
-      const initialFilters = { ...EMPTY_FILTERS, accountId };
-      setAppliedFilters(initialFilters);
-      setDraftFilters(initialFilters);
-      return loadTrades(1, PAGE_SIZE, initialFilters);
-    },
-    {
-      skip: shouldSkipServerMatchedAccountLoad(
-        accountId,
-        serverSelectedAccountId,
-      ),
-    },
-  );
+  useAutoReloadOnAccountChange(isReady, accountId, reloadTradesForAccount, {
+    skipInitial: shouldSkipServerMatchedAccountLoad(
+      accountId,
+      serverSelectedAccountId,
+    ),
+  });
 
   const refreshTrades = useCallback(() => {
     return loadTrades(page, pageSize, appliedFilters);
@@ -252,24 +241,16 @@ export function TradesManager({
           title="Trades"
           description="Browse, filter, and review your open and closed trades."
         />
-        <div className="flex w-full max-w-md flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="flex-1 space-y-2">
-            <Label htmlFor="trades-account">Account</Label>
-            <DropdownSelect
-              id="trades-account"
-              name="trades-account"
-              options={accountOptions}
-              value={accountId}
-              onValueChange={setAccountId}
-            />
-          </div>
-          <Button
-            type="button"
+        <div className="w-full max-w-md space-y-2">
+          <Label htmlFor="trades-account">Account</Label>
+          <DropdownSelect
+            id="trades-account"
+            name="trades-account"
+            options={accountOptions}
+            value={accountId}
+            onValueChange={setAccountId}
             disabled={isLoading}
-            onClick={() => void handleApplyAccount()}
-          >
-            {isLoading ? "Loading..." : "Apply"}
-          </Button>
+          />
         </div>
       </div>
 

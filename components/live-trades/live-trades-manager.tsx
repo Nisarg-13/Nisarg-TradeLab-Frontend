@@ -17,10 +17,7 @@ import { Label } from "@/components/ui/label";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { LIVE_TRADES_POLL_INTERVAL_MS } from "@/lib/live-trades/constants";
 import { useLiveTradesRefresh } from "@/lib/hooks/use-live-trades-refresh";
-import {
-  useInitialPersistedAccountLoad,
-  usePersistedAccountId,
-} from "@/lib/hooks/use-persisted-account-id";
+import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import { useFormatDateTime } from "@/lib/hooks/use-format-datetime";
@@ -144,14 +141,6 @@ export function LiveTradesManager({
     ],
     [accounts],
   );
-
-  useInitialPersistedAccountLoad(isReady, () => refreshLiveTrades(), {
-    enabled: Boolean(accountId),
-    skip: shouldSkipServerMatchedAccountLoad(
-      accountId,
-      serverSelectedAccountId,
-    ),
-  });
 
   useTradeDataRefresh(isReady, () => refreshLiveTrades({ silent: true }));
 

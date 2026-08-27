@@ -76,6 +76,7 @@ export function AnalyticsFilters({
   isLoading,
   onToggleOpen,
   onChange,
+  onAccountChange,
   onApply,
   onClear,
 }: {
@@ -90,6 +91,7 @@ export function AnalyticsFilters({
   isLoading: boolean;
   onToggleOpen: () => void;
   onChange: (next: AnalyticsQuery) => void;
+  onAccountChange: (accountId: string) => void;
   onApply: () => void;
   onClear: () => void;
 }) {
@@ -174,9 +176,7 @@ export function AnalyticsFilters({
                 name="analytics-account"
                 options={accountOptions}
                 value={draftFilters.tradingAccountId ?? accountId ?? ""}
-                onValueChange={(value) =>
-                  updateField("tradingAccountId", value)
-                }
+                onValueChange={onAccountChange}
               />
             </div>
             <div className="space-y-2">

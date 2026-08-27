@@ -2,7 +2,7 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AnalyticsFilters } from "@/components/analytics/analytics-filters";
@@ -59,10 +59,8 @@ import {
   serializeAnalyticsTab,
   type AnalyticsTabId,
 } from "@/lib/analytics/query-state";
-import {
-  useInitialPersistedAccountLoad,
-  usePersistedAccountId,
-} from "@/lib/hooks/use-persisted-account-id";
+import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
+import { useAutoReloadOnAccountChange } from "@/lib/hooks/use-auto-reload-on-account-change";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import {
   TIMEZONE_CHANGE_EVENT,
@@ -161,6 +159,7 @@ export function AnalyticsManager({
   );
   const activeTab = tabFromUrl;
   const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
+  const skipAccountReloadRef = useRef(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] =
     useState<AnalyticsQuery>(initialFilters);
@@ -268,19 +267,31 @@ export function AnalyticsManager({
     setDraftFilters(next);
   }
 
-  async function applyFilters() {
-    const nextAccountId = draftFilters.tradingAccountId ?? "";
+  async function applyFilters(overrideDraft?: AnalyticsQuery) {
+    const nextDraft = overrideDraft ?? draftFilters;
+    const nextAccountId = nextDraft.tradingAccountId ?? "";
 
     if (nextAccountId !== accountId) {
+      skipAccountReloadRef.current = true;
       setAccountId(nextAccountId);
     }
 
-    setAppliedFilters(draftFilters);
+    setDraftFilters(nextDraft);
+    setAppliedFilters(nextDraft);
     setFiltersOpen(false);
 
-    const nextQuery = buildQueryFromFilters(draftFilters);
+    const nextQuery = buildQueryFromFilters(nextDraft);
     syncUrl(nextQuery);
     await loadAnalytics(nextQuery);
+  }
+
+  function handleAccountFilterChange(value: string) {
+    const nextDraft: AnalyticsQuery = {
+      ...draftFilters,
+      tradingAccountId: value || undefined,
+    };
+
+    void applyFilters(nextDraft);
   }
 
   function clearFilters() {
@@ -465,10 +476,21 @@ export function AnalyticsManager({
     [comparisonMode, customDates, getAuthToken, heatmapMetric, queryFilters],
   );
 
-  useInitialPersistedAccountLoad(
+  useAutoReloadOnAccountChange(
     isReady && isAuthLoaded,
+    accountId,
     () => loadAnalytics(),
-    { skip: false },
+    {
+      skipInitial: false,
+      consumeSkipReload: () => {
+        if (!skipAccountReloadRef.current) {
+          return false;
+        }
+
+        skipAccountReloadRef.current = false;
+        return true;
+      },
+    },
   );
 
   useTradeDataRefresh(isReady && isAuthLoaded, () => loadAnalytics());
@@ -561,6 +583,7 @@ export function AnalyticsManager({
         isLoading={isLoading}
         onToggleOpen={toggleFilters}
         onChange={handleFiltersChange}
+        onAccountChange={handleAccountFilterChange}
         onApply={() => void applyFilters()}
         onClear={() => void clearFilters()}
       />

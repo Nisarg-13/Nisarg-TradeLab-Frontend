@@ -24,6 +24,7 @@ import {
 import { PlanComplianceCard } from "@/components/dashboard/plan-compliance-card";
 import { RiskStatsTable } from "@/components/dashboard/risk-stats-table";
 import { PageHeader } from "@/components/layout/page-header";
+import { AccountSwitchLoadingOverlay } from "@/components/layout/account-switch-loading-overlay";
 import {
   Card,
   CardContent,
@@ -52,7 +53,10 @@ import {
   stableCacheKey,
 } from "@/lib/cache/account-data-cache";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
-import { useAutoReloadOnAccountChange } from "@/lib/hooks/use-auto-reload-on-account-change";
+import {
+  resolveAccountLabel,
+  useAccountSwitchLoading,
+} from "@/lib/hooks/use-account-switch-loading";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import {
@@ -197,7 +201,10 @@ export function AnalyticsManager({
     [searchParams],
   );
   const activeTab = tabFromUrl;
-  const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
+  const { accountId, setAccountId, isReady } = usePersistedAccountId(
+    accounts,
+    serverSelectedAccountId,
+  );
   const skipAccountReloadRef = useRef(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] =
@@ -588,7 +595,7 @@ export function AnalyticsManager({
     ],
   );
 
-  useAutoReloadOnAccountChange(
+  const { isAccountSwitchLoading } = useAccountSwitchLoading(
     isReady && isAuthLoaded,
     accountId,
     () => loadAnalytics(),
@@ -679,7 +686,7 @@ export function AnalyticsManager({
   }
 
   return (
-    <div className={cn("space-y-6", isRefreshing && "opacity-90")}>
+    <div className="space-y-6">
       <PageHeader
         eyebrow="Analytics"
         title="Advanced analytics"
@@ -721,264 +728,272 @@ export function AnalyticsManager({
         ))}
       </div>
 
-      {activeTab === "overview" ? (
-        <div className="space-y-6">
-          <AnalyticsOverviewCards summary={summary} />
-          <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
-            <EquityCurveChart data={summary.equityCurve} />
-            <DailyPerformanceCalendar
-              days={summary.calendar}
+      <AccountSwitchLoadingOverlay
+        isLoading={isAccountSwitchLoading}
+        accountLabel={resolveAccountLabel(accounts, accountId)}
+      >
+        {activeTab === "overview" ? (
+          <div className="space-y-6">
+            <AnalyticsOverviewCards summary={summary} />
+            <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
+              <EquityCurveChart data={summary.equityCurve} />
+              <DailyPerformanceCalendar
+                days={summary.calendar}
+                currency={currency}
+              />
+            </div>
+            <PlanComplianceCard groups={planCompliance} currency={currency} />
+          </div>
+        ) : null}
+
+        {activeTab === "sessions" ? (
+          <SessionPerformancePanel
+            dashboard={sessionDashboard}
+            highlights={insightsAnalytics.highlights}
+            sessionSymbols={insightsAnalytics.sessionSymbols}
+            currency={currency}
+          />
+        ) : null}
+
+        {activeTab === "instruments" ? (
+          <InstrumentPerformanceTable rows={instruments} currency={currency} />
+        ) : null}
+
+        {activeTab === "strategies" ? (
+          <StrategyPerformanceTable rows={strategyRows} currency={currency} />
+        ) : null}
+
+        {activeTab === "direction" ? (
+          <DirectionAnalyticsPanel
+            data={directionAnalytics}
+            currency={currency}
+          />
+        ) : null}
+
+        {activeTab === "time" ? (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Profile timezone</CardTitle>
+                <CardDescription>
+                  Time windows use the same timezone as the header clock (
+                  {timezoneLabel}). Current 2-hour window:{" "}
+                  {currentTwoHourWindow}.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <MetricsGroupsTable
+              title="2-hour windows"
+              description={`Closed-trade stats grouped by 2-hour entry (open) windows in ${timezoneLabel}. A trade is counted when it was opened during that window, not when it closed.`}
+              rows={localizedTimeAnalytics.twoHourWindows}
               currency={currency}
+              nameHeader="Window"
+              showTimeEntries
+              showConfidence={false}
+              showRColumns={false}
+            />
+            <MetricsGroupsTable
+              title="Hour of day"
+              description={`Closed-trade stats grouped by entry (open) hour in ${timezoneLabel}.`}
+              rows={localizedTimeAnalytics.hours}
+              currency={currency}
+              nameHeader="Hour"
+              showTimeEntries
+              showConfidence={false}
+              showRColumns={false}
+            />
+            <MetricsGroupsTable
+              title="Day of week"
+              description="Closed-trade stats grouped by weekday."
+              rows={localizedTimeAnalytics.daysOfWeek}
+              currency={currency}
+              nameHeader="Day"
+              showConfidence={false}
+              showRColumns={false}
+            />
+            <MetricsGroupsTable
+              title="Month"
+              description="Closed-trade stats grouped by calendar month."
+              rows={localizedTimeAnalytics.months}
+              currency={currency}
+              nameHeader="Month"
+              showConfidence={false}
+              showRColumns={false}
+            />
+            <MetricsGroupsTable
+              title="Trade duration"
+              description="How long closed trades stayed open before exit."
+              rows={durationAnalytics}
+              currency={currency}
+              nameHeader="Duration"
+              showConfidence={false}
+              showRColumns={false}
+            />
+            <TimeHeatmap
+              cells={heatmapCells}
+              metric={heatmapMetric}
+              timezoneLabel={timezoneLabel}
+              onMetricChange={(metric) =>
+                void handleHeatmapMetricChange(metric)
+              }
             />
           </div>
-          <PlanComplianceCard groups={planCompliance} currency={currency} />
-        </div>
-      ) : null}
+        ) : null}
 
-      {activeTab === "sessions" ? (
-        <SessionPerformancePanel
-          dashboard={sessionDashboard}
-          highlights={insightsAnalytics.highlights}
-          sessionSymbols={insightsAnalytics.sessionSymbols}
-          currency={currency}
-        />
-      ) : null}
+        {activeTab === "risk" ? (
+          <RiskStatsTable groups={riskStats} currency={currency} />
+        ) : null}
 
-      {activeTab === "instruments" ? (
-        <InstrumentPerformanceTable rows={instruments} currency={currency} />
-      ) : null}
-
-      {activeTab === "strategies" ? (
-        <StrategyPerformanceTable rows={strategyRows} currency={currency} />
-      ) : null}
-
-      {activeTab === "direction" ? (
-        <DirectionAnalyticsPanel
-          data={directionAnalytics}
-          currency={currency}
-        />
-      ) : null}
-
-      {activeTab === "time" ? (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Profile timezone</CardTitle>
-              <CardDescription>
-                Time windows use the same timezone as the header clock (
-                {timezoneLabel}). Current 2-hour window: {currentTwoHourWindow}.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-          <MetricsGroupsTable
-            title="2-hour windows"
-            description={`Closed-trade stats grouped by 2-hour entry (open) windows in ${timezoneLabel}. A trade is counted when it was opened during that window, not when it closed.`}
-            rows={localizedTimeAnalytics.twoHourWindows}
-            currency={currency}
-            nameHeader="Window"
-            showTimeEntries
-            showConfidence={false}
-            showRColumns={false}
-          />
-          <MetricsGroupsTable
-            title="Hour of day"
-            description={`Closed-trade stats grouped by entry (open) hour in ${timezoneLabel}.`}
-            rows={localizedTimeAnalytics.hours}
-            currency={currency}
-            nameHeader="Hour"
-            showTimeEntries
-            showConfidence={false}
-            showRColumns={false}
-          />
-          <MetricsGroupsTable
-            title="Day of week"
-            description="Closed-trade stats grouped by weekday."
-            rows={localizedTimeAnalytics.daysOfWeek}
-            currency={currency}
-            nameHeader="Day"
-            showConfidence={false}
-            showRColumns={false}
-          />
-          <MetricsGroupsTable
-            title="Month"
-            description="Closed-trade stats grouped by calendar month."
-            rows={localizedTimeAnalytics.months}
-            currency={currency}
-            nameHeader="Month"
-            showConfidence={false}
-            showRColumns={false}
-          />
-          <MetricsGroupsTable
-            title="Trade duration"
-            description="How long closed trades stayed open before exit."
-            rows={durationAnalytics}
-            currency={currency}
-            nameHeader="Duration"
-            showConfidence={false}
-            showRColumns={false}
-          />
-          <TimeHeatmap
-            cells={heatmapCells}
-            metric={heatmapMetric}
-            timezoneLabel={timezoneLabel}
-            onMetricChange={(metric) => void handleHeatmapMetricChange(metric)}
-          />
-        </div>
-      ) : null}
-
-      {activeTab === "risk" ? (
-        <RiskStatsTable groups={riskStats} currency={currency} />
-      ) : null}
-
-      {activeTab === "psychology" ? (
-        <div className="space-y-6">
-          <MetricsGroupsTable
-            title="Pre-trade emotions"
-            description="Measured association between pre-trade emotion tags and outcomes."
-            rows={psychology.preTradeEmotions}
-            currency={currency}
-            nameHeader="Emotion"
-          />
-          <MetricsGroupsTable
-            title="Post-trade emotions"
-            description="Measured association between post-trade emotion tags and outcomes."
-            rows={psychology.postTradeEmotions}
-            currency={currency}
-            nameHeader="Emotion"
-          />
-          <MetricsGroupsTable
-            title="Confidence score"
-            description="Performance grouped by pre-trade confidence buckets."
-            rows={psychology.confidence}
-            currency={currency}
-            nameHeader="Bucket"
-          />
-          <MetricsGroupsTable
-            title="Market bias"
-            description="Performance grouped by your pre-trade market bias."
-            rows={psychology.marketBias}
-            currency={currency}
-            nameHeader="Bias"
-          />
-          <MetricsGroupsTable
-            title="Bias alignment"
-            description="Whether trade direction matched your stated market bias."
-            rows={psychology.biasAlignment}
-            currency={currency}
-            nameHeader="Alignment"
-          />
-          <PlanComplianceCard groups={planCompliance} currency={currency} />
-        </div>
-      ) : null}
-
-      {activeTab === "setups" ? (
-        <MetricsGroupsTable
-          title="Entry criteria analytics"
-          description="Performance for trades tagged with each entry criterion."
-          rows={tagRows}
-          currency={currency}
-          nameHeader="Tag"
-        />
-      ) : null}
-
-      {activeTab === "mistakes" ? (
-        <MetricsGroupsTable
-          title="Mistake analytics"
-          description="Association only — mistakes tagged on closed trades, without causation claims."
-          rows={mistakeRows}
-          currency={currency}
-          nameHeader="Mistake"
-        />
-      ) : null}
-
-      {activeTab === "compare" ? (
-        <div className="space-y-6">
-          <PeriodComparisonPanel
-            comparison={comparison}
-            mode={comparisonMode}
-            customDates={customDates}
-            isLoading={isRefreshing}
-            onModeChange={setComparisonMode}
-            onCustomDatesChange={(field, value) =>
-              setCustomDates((current) => ({ ...current, [field]: value }))
-            }
-            onApply={() => void loadAnalytics()}
-          />
-          <ConcentrationPanel
-            data={concentrationAnalytics}
-            currency={currency}
-          />
-          <div className="grid gap-6 xl:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Rolling {rolling.windowSize}</CardTitle>
-                <CardDescription>
-                  Latest closed-trade window versus the previous window.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-muted-foreground text-xs uppercase">
-                    Current window
-                  </p>
-                  <p className="tabular-data text-2xl font-semibold">
-                    {rolling.currentWindow.netPnl}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    <TradeCountPhrase
-                      tradeCount={rolling.currentWindow.tradeCount}
-                      winCount={rolling.currentWindow.winCount}
-                      lossCount={rolling.currentWindow.lossCount}
-                    />
-                    {" · win rate "}
-                    {rolling.currentWindow.winRate ?? "—"}%
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs uppercase">
-                    Previous window
-                  </p>
-                  <p className="tabular-data text-2xl font-semibold">
-                    {rolling.previousWindow.netPnl}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    <TradeCountPhrase
-                      tradeCount={rolling.previousWindow.tradeCount}
-                      winCount={rolling.previousWindow.winCount}
-                      lossCount={rolling.previousWindow.lossCount}
-                    />
-                    {" · win rate "}
-                    {rolling.previousWindow.winRate ?? "—"}%
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Rolling trend</CardTitle>
-                <CardDescription>
-                  Window net PnL after each closed trade.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {rolling.points.slice(-8).map((point) => (
-                  <div
-                    key={point.index}
-                    className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
-                  >
-                    <span className="text-muted-foreground">
-                      Trade {point.index}
-                    </span>
-                    <span className="tabular-data font-medium">
-                      {point.windowNetPnl}
-                    </span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+        {activeTab === "psychology" ? (
+          <div className="space-y-6">
+            <MetricsGroupsTable
+              title="Pre-trade emotions"
+              description="Measured association between pre-trade emotion tags and outcomes."
+              rows={psychology.preTradeEmotions}
+              currency={currency}
+              nameHeader="Emotion"
+            />
+            <MetricsGroupsTable
+              title="Post-trade emotions"
+              description="Measured association between post-trade emotion tags and outcomes."
+              rows={psychology.postTradeEmotions}
+              currency={currency}
+              nameHeader="Emotion"
+            />
+            <MetricsGroupsTable
+              title="Confidence score"
+              description="Performance grouped by pre-trade confidence buckets."
+              rows={psychology.confidence}
+              currency={currency}
+              nameHeader="Bucket"
+            />
+            <MetricsGroupsTable
+              title="Market bias"
+              description="Performance grouped by your pre-trade market bias."
+              rows={psychology.marketBias}
+              currency={currency}
+              nameHeader="Bias"
+            />
+            <MetricsGroupsTable
+              title="Bias alignment"
+              description="Whether trade direction matched your stated market bias."
+              rows={psychology.biasAlignment}
+              currency={currency}
+              nameHeader="Alignment"
+            />
+            <PlanComplianceCard groups={planCompliance} currency={currency} />
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
+        {activeTab === "setups" ? (
+          <MetricsGroupsTable
+            title="Entry criteria analytics"
+            description="Performance for trades tagged with each entry criterion."
+            rows={tagRows}
+            currency={currency}
+            nameHeader="Tag"
+          />
+        ) : null}
+
+        {activeTab === "mistakes" ? (
+          <MetricsGroupsTable
+            title="Mistake analytics"
+            description="Association only — mistakes tagged on closed trades, without causation claims."
+            rows={mistakeRows}
+            currency={currency}
+            nameHeader="Mistake"
+          />
+        ) : null}
+
+        {activeTab === "compare" ? (
+          <div className="space-y-6">
+            <PeriodComparisonPanel
+              comparison={comparison}
+              mode={comparisonMode}
+              customDates={customDates}
+              isLoading={isRefreshing}
+              onModeChange={setComparisonMode}
+              onCustomDatesChange={(field, value) =>
+                setCustomDates((current) => ({ ...current, [field]: value }))
+              }
+              onApply={() => void loadAnalytics()}
+            />
+            <ConcentrationPanel
+              data={concentrationAnalytics}
+              currency={currency}
+            />
+            <div className="grid gap-6 xl:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Rolling {rolling.windowSize}</CardTitle>
+                  <CardDescription>
+                    Latest closed-trade window versus the previous window.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-muted-foreground text-xs uppercase">
+                      Current window
+                    </p>
+                    <p className="tabular-data text-2xl font-semibold">
+                      {rolling.currentWindow.netPnl}
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      <TradeCountPhrase
+                        tradeCount={rolling.currentWindow.tradeCount}
+                        winCount={rolling.currentWindow.winCount}
+                        lossCount={rolling.currentWindow.lossCount}
+                      />
+                      {" · win rate "}
+                      {rolling.currentWindow.winRate ?? "—"}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs uppercase">
+                      Previous window
+                    </p>
+                    <p className="tabular-data text-2xl font-semibold">
+                      {rolling.previousWindow.netPnl}
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      <TradeCountPhrase
+                        tradeCount={rolling.previousWindow.tradeCount}
+                        winCount={rolling.previousWindow.winCount}
+                        lossCount={rolling.previousWindow.lossCount}
+                      />
+                      {" · win rate "}
+                      {rolling.previousWindow.winRate ?? "—"}%
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Rolling trend</CardTitle>
+                  <CardDescription>
+                    Window net PnL after each closed trade.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {rolling.points.slice(-8).map((point) => (
+                    <div
+                      key={point.index}
+                      className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+                    >
+                      <span className="text-muted-foreground">
+                        Trade {point.index}
+                      </span>
+                      <span className="tabular-data font-medium">
+                        {point.windowNetPnl}
+                      </span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        ) : null}
+      </AccountSwitchLoadingOverlay>
     </div>
   );
 }

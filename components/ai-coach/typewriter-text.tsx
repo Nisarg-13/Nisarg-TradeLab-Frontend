@@ -7,8 +7,8 @@ export function TypewriterText({
   enabled = true,
   className,
   onComplete,
-  speedMs = 8,
-  charsPerTick = 2,
+  speedMs = 16,
+  charsPerTick = 1,
 }: {
   text: string;
   enabled?: boolean;

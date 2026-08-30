@@ -5,6 +5,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { AccountSwitchLoadingOverlay } from "@/components/layout/account-switch-loading-overlay";
 import { BulkJournalPanel } from "@/components/trades/bulk-journal-panel";
 import { TradesTable } from "@/components/trades/trades-table";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,10 @@ import {
   stableCacheKey,
 } from "@/lib/cache/account-data-cache";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
-import { useAutoReloadOnAccountChange } from "@/lib/hooks/use-auto-reload-on-account-change";
+import {
+  resolveAccountLabel,
+  useAccountSwitchLoading,
+} from "@/lib/hooks/use-account-switch-loading";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import {
@@ -139,7 +143,10 @@ export function TradesManager({
   mistakes: Mistake[];
 }) {
   const getAuthToken = useClientAuthToken();
-  const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
+  const { accountId, setAccountId, isReady } = usePersistedAccountId(
+    accounts,
+    serverSelectedAccountId,
+  );
   const [trades, setTrades] = useState(initialTrades);
   const [meta, setMeta] = useState(initialMeta);
   const [isLoading, setIsLoading] = useState(false);
@@ -286,12 +293,17 @@ export function TradesManager({
     await loadTrades(1, pageSize, filtersWithAccount());
   }, [filtersWithAccount, loadTrades, pageSize]);
 
-  useAutoReloadOnAccountChange(isReady, accountId, reloadTradesForAccount, {
-    skipInitial: shouldSkipServerMatchedAccountLoad(
-      accountId,
-      serverSelectedAccountId,
-    ),
-  });
+  const { isAccountSwitchLoading } = useAccountSwitchLoading(
+    isReady,
+    accountId,
+    reloadTradesForAccount,
+    {
+      skipInitial: shouldSkipServerMatchedAccountLoad(
+        accountId,
+        serverSelectedAccountId,
+      ),
+    },
+  );
 
   const refreshTrades = useCallback(() => {
     return loadTrades(page, pageSize, filtersWithAccount());
@@ -359,221 +371,233 @@ export function TradesManager({
         </div>
       </div>
 
-      <Card>
-        <CardHeader
-          className={cn(
-            "gap-4 sm:flex-row sm:items-start sm:justify-between",
-            filtersOpen && "border-b pb-5",
-          )}
-        >
-          <div className="min-w-0 flex-1 space-y-1">
-            <CardTitle className="leading-snug">All trades</CardTitle>
-            <CardDescription>
-              {meta.total} trade{meta.total === 1 ? "" : "s"} total
-              {selectedAccountName ? ` · ${selectedAccountName}` : ""}
-              {selectedTradeIds.length > 0
-                ? ` · ${selectedTradeIds.length} selected`
-                : ""}
-              {activeFilterCount > 0
-                ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} active`
-                : ""}
-            </CardDescription>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant={filtersOpen ? "secondary" : "outline"}
-              onClick={() =>
-                filtersOpen ? setFiltersOpen(false) : openFilters()
-              }
-            >
-              <SlidersHorizontal className="size-4" aria-hidden="true" />
-              Filters
-              {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-            </Button>
-            {selectedTradeIds.length > 0 ? (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedTradeIds([]);
-                    setShowBulkJournal(false);
-                  }}
-                >
-                  Clear selection
-                </Button>
-                <Button type="button" onClick={() => setShowBulkJournal(true)}>
-                  Edit journal
-                </Button>
-              </>
-            ) : null}
-          </div>
-        </CardHeader>
-        {filtersOpen ? (
-          <div className="bg-muted/20 border-b px-6 py-5">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="filter-symbol">Symbol</Label>
-                <Input
-                  id="filter-symbol"
-                  placeholder="EUR/USD"
-                  value={draftFilters.symbol}
-                  onChange={(event) =>
-                    setDraftFilters((current) => ({
-                      ...current,
-                      symbol: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="filter-status">Status</Label>
-                <DropdownSelect
-                  id="filter-status"
-                  name="filter-status"
-                  options={STATUS_OPTIONS}
-                  value={draftFilters.status}
-                  onValueChange={(value) =>
-                    setDraftFilters((current) => ({
-                      ...current,
-                      status: value as TradeStatus | "",
-                    }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="filter-direction">Direction</Label>
-                <DropdownSelect
-                  id="filter-direction"
-                  name="filter-direction"
-                  options={DIRECTION_OPTIONS}
-                  value={draftFilters.direction}
-                  onValueChange={(value) =>
-                    setDraftFilters((current) => ({
-                      ...current,
-                      direction: value as TradeDirection | "",
-                    }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="filter-sort">Sort</Label>
-                <DropdownSelect
-                  id="filter-sort"
-                  name="filter-sort"
-                  options={SORT_OPTIONS}
-                  value={draftFilters.sort}
-                  onValueChange={(value) =>
-                    setDraftFilters((current) => ({
-                      ...current,
-                      sort: value as TradeSort,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-              <Button
-                type="button"
-                disabled={isLoading}
-                onClick={() => void applyFilters()}
-              >
-                {isLoading ? "Applying..." : "Apply filters"}
-              </Button>
-              {activeFilterCount > 0 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={isLoading}
-                  onClick={() => void clearFilters()}
-                >
-                  Clear
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-        <CardContent className={cn("space-y-4", filtersOpen ? "pt-5" : "pt-0")}>
-          {showBulkJournal && selectedTradeIds.length > 0 ? (
-            <BulkJournalPanel
-              selectedTradeIds={selectedTradeIds}
-              selectedSymbols={selectedTrades.map((trade) => trade.symbol)}
-              strategies={strategies}
-              tags={tags}
-              mistakes={mistakes}
-              onSaved={() => {
-                setSelectedTradeIds([]);
-                setShowBulkJournal(false);
-              }}
-              onCancel={() => setShowBulkJournal(false)}
-            />
-          ) : null}
-
-          <div
+      <AccountSwitchLoadingOverlay
+        isLoading={isAccountSwitchLoading}
+        accountLabel={resolveAccountLabel(accounts, accountId)}
+      >
+        <Card>
+          <CardHeader
             className={cn(
-              "relative",
-              isLoading && trades.length > 0 && "opacity-70",
+              "gap-4 sm:flex-row sm:items-start sm:justify-between",
+              filtersOpen && "border-b pb-5",
             )}
           >
-            {isLoading && trades.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Loading trades...</p>
-            ) : (
-              <TradesTable
-                trades={trades}
-                showAccount={!(appliedFilters.accountId || accountId)}
-                emptyMessage="No trades match these filters."
-                selectable
-                selectedTradeIds={selectedTradeIds}
-                onSelectedTradeIdsChange={setSelectedTradeIds}
-                sortable
-                sort={appliedFilters.sort}
-                onSortChange={handleSortChange}
-              />
-            )}
-          </div>
-
-          <div className="flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-muted-foreground text-sm">
-              Showing up to {PAGE_SIZE} trades per page
-            </p>
-
-            {meta.totalPages > 1 ? (
-              <div className="flex items-center justify-between gap-3 sm:justify-end">
+            <div className="min-w-0 flex-1 space-y-1">
+              <CardTitle className="leading-snug">All trades</CardTitle>
+              <CardDescription>
+                {meta.total} trade{meta.total === 1 ? "" : "s"} total
+                {selectedAccountName ? ` · ${selectedAccountName}` : ""}
+                {selectedTradeIds.length > 0
+                  ? ` · ${selectedTradeIds.length} selected`
+                  : ""}
+                {activeFilterCount > 0
+                  ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} active`
+                  : ""}
+              </CardDescription>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant={filtersOpen ? "secondary" : "outline"}
+                onClick={() =>
+                  filtersOpen ? setFiltersOpen(false) : openFilters()
+                }
+              >
+                <SlidersHorizontal className="size-4" aria-hidden="true" />
+                Filters
+                {activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              </Button>
+              {selectedTradeIds.length > 0 ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedTradeIds([]);
+                      setShowBulkJournal(false);
+                    }}
+                  >
+                    Clear selection
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setShowBulkJournal(true)}
+                  >
+                    Edit journal
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          </CardHeader>
+          {filtersOpen ? (
+            <div className="bg-muted/20 border-b px-6 py-5">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="filter-symbol">Symbol</Label>
+                  <Input
+                    id="filter-symbol"
+                    placeholder="EUR/USD"
+                    value={draftFilters.symbol}
+                    onChange={(event) =>
+                      setDraftFilters((current) => ({
+                        ...current,
+                        symbol: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="filter-status">Status</Label>
+                  <DropdownSelect
+                    id="filter-status"
+                    name="filter-status"
+                    options={STATUS_OPTIONS}
+                    value={draftFilters.status}
+                    onValueChange={(value) =>
+                      setDraftFilters((current) => ({
+                        ...current,
+                        status: value as TradeStatus | "",
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="filter-direction">Direction</Label>
+                  <DropdownSelect
+                    id="filter-direction"
+                    name="filter-direction"
+                    options={DIRECTION_OPTIONS}
+                    value={draftFilters.direction}
+                    onValueChange={(value) =>
+                      setDraftFilters((current) => ({
+                        ...current,
+                        direction: value as TradeDirection | "",
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="filter-sort">Sort</Label>
+                  <DropdownSelect
+                    id="filter-sort"
+                    name="filter-sort"
+                    options={SORT_OPTIONS}
+                    value={draftFilters.sort}
+                    onValueChange={(value) =>
+                      setDraftFilters((current) => ({
+                        ...current,
+                        sort: value as TradeSort,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1 || isLoading}
-                  onClick={() =>
-                    void loadTrades(page - 1, pageSize, filtersWithAccount())
-                  }
+                  disabled={isLoading}
+                  onClick={() => void applyFilters()}
                 >
-                  Previous
+                  {isLoading ? "Applying..." : "Apply filters"}
                 </Button>
+                {activeFilterCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isLoading}
+                    onClick={() => void clearFilters()}
+                  >
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          <CardContent
+            className={cn("space-y-4", filtersOpen ? "pt-5" : "pt-0")}
+          >
+            {showBulkJournal && selectedTradeIds.length > 0 ? (
+              <BulkJournalPanel
+                selectedTradeIds={selectedTradeIds}
+                selectedSymbols={selectedTrades.map((trade) => trade.symbol)}
+                strategies={strategies}
+                tags={tags}
+                mistakes={mistakes}
+                onSaved={() => {
+                  setSelectedTradeIds([]);
+                  setShowBulkJournal(false);
+                }}
+                onCancel={() => setShowBulkJournal(false)}
+              />
+            ) : null}
+
+            <div
+              className={cn(
+                "relative",
+                isLoading && trades.length > 0 && "opacity-70",
+              )}
+            >
+              {isLoading && trades.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  Loading trades...
+                </p>
+              ) : (
+                <TradesTable
+                  trades={trades}
+                  showAccount={!(appliedFilters.accountId || accountId)}
+                  emptyMessage="No trades match these filters."
+                  selectable
+                  selectedTradeIds={selectedTradeIds}
+                  onSelectedTradeIdsChange={setSelectedTradeIds}
+                  sortable
+                  sort={appliedFilters.sort}
+                  onSortChange={handleSortChange}
+                />
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-muted-foreground text-sm">
+                Showing up to {PAGE_SIZE} trades per page
+              </p>
+
+              {meta.totalPages > 1 ? (
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 1 || isLoading}
+                    onClick={() =>
+                      void loadTrades(page - 1, pageSize, filtersWithAccount())
+                    }
+                  >
+                    Previous
+                  </Button>
+                  <p className="text-muted-foreground text-sm">
+                    Page {meta.page} of {meta.totalPages}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= meta.totalPages || isLoading}
+                    onClick={() =>
+                      void loadTrades(page + 1, pageSize, filtersWithAccount())
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              ) : (
                 <p className="text-muted-foreground text-sm">
                   Page {meta.page} of {meta.totalPages}
                 </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= meta.totalPages || isLoading}
-                  onClick={() =>
-                    void loadTrades(page + 1, pageSize, filtersWithAccount())
-                  }
-                >
-                  Next
-                </Button>
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                Page {meta.page} of {meta.totalPages}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </AccountSwitchLoadingOverlay>
     </div>
   );
 }

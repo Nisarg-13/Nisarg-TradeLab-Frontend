@@ -12,19 +12,39 @@ import {
 let cachedAccountId: string | null | undefined;
 
 export function seedPersistedAccountId(accountId: string) {
+  if (typeof window === "undefined") {
+    cachedAccountId = accountId;
+    return;
+  }
+
   if (cachedAccountId === undefined) {
     cachedAccountId = accountId;
   }
 }
 
-export function usePersistedAccountId(accounts: Array<{ id: string }>) {
+function resolveInitialAccountId(
+  accounts: Array<{ id: string }>,
+  serverSelectedAccountId: string,
+) {
+  const seed =
+    cachedAccountId !== undefined
+      ? (cachedAccountId ?? "")
+      : serverSelectedAccountId;
+
+  return resolveAccountIdForAccounts(seed, accounts);
+}
+
+export function usePersistedAccountId(
+  accounts: Array<{ id: string }>,
+  serverSelectedAccountId = "",
+) {
   const getAuthToken = useClientAuthToken();
   const [accountId, setAccountIdState] = useState(() =>
-    cachedAccountId !== undefined
-      ? resolveAccountIdForAccounts(cachedAccountId ?? "", accounts)
-      : "",
+    resolveInitialAccountId(accounts, serverSelectedAccountId),
   );
-  const [isReady, setIsReady] = useState(cachedAccountId !== undefined);
+  const [isReady, setIsReady] = useState(
+    () => cachedAccountId !== undefined || Boolean(serverSelectedAccountId),
+  );
 
   useEffect(() => {
     let cancelled = false;

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { OpenPositionsCard } from "@/components/live-trades/open-positions-card";
 import { PageHeader } from "@/components/layout/page-header";
+import { AccountSwitchLoadingOverlay } from "@/components/layout/account-switch-loading-overlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { LIVE_TRADES_POLL_INTERVAL_MS } from "@/lib/live-trades/constants";
 import { useLiveTradesRefresh } from "@/lib/hooks/use-live-trades-refresh";
+import { resolveAccountLabel } from "@/lib/hooks/use-account-switch-loading";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
@@ -111,7 +113,10 @@ export function LiveTradesManager({
   initialData: LiveTradesResponse;
 }) {
   const { formatApp } = useFormatDateTime();
-  const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
+  const { accountId, setAccountId, isReady } = usePersistedAccountId(
+    accounts,
+    serverSelectedAccountId,
+  );
 
   const {
     data,
@@ -120,6 +125,7 @@ export function LiveTradesManager({
     lastRefreshedAt,
     lastMt5SnapshotAt,
     isRefreshing,
+    isAccountSwitchLoading,
     refreshLiveTrades,
   } = useLiveTradesRefresh({
     accountId,
@@ -186,29 +192,34 @@ export function LiveTradesManager({
         </div>
       </div>
 
-      <ConnectionStatusCard
-        liveStatus={data.liveStatus}
-        connections={filteredConnections}
-        formatAppDateTime={formatApp}
-      />
+      <AccountSwitchLoadingOverlay
+        isLoading={isAccountSwitchLoading}
+        accountLabel={resolveAccountLabel(accounts, accountId)}
+      >
+        <ConnectionStatusCard
+          liveStatus={data.liveStatus}
+          connections={filteredConnections}
+          formatAppDateTime={formatApp}
+        />
 
-      {isRefreshing && positions.length === 0 ? (
-        <Card>
-          <CardContent className="py-6">
-            <TableSkeleton rows={4} />
-          </CardContent>
-        </Card>
-      ) : (
-        <OpenPositionsCard positions={positions} />
-      )}
+        {isRefreshing && positions.length === 0 && !isAccountSwitchLoading ? (
+          <Card>
+            <CardContent className="py-6">
+              <TableSkeleton rows={4} />
+            </CardContent>
+          </Card>
+        ) : (
+          <OpenPositionsCard positions={positions} />
+        )}
 
-      {data.liveStatus === "STALE" ? (
-        <p className={cn("text-sm", liveStatusTone("STALE"))}>
-          Live prices may be stale or missing. Check that the MT5 EA is running
-          and that &quot;Last price snapshot&quot; is updating on the connection
-          card above.
-        </p>
-      ) : null}
+        {data.liveStatus === "STALE" ? (
+          <p className={cn("text-sm", liveStatusTone("STALE"))}>
+            Live prices may be stale or missing. Check that the MT5 EA is
+            running and that &quot;Last price snapshot&quot; is updating on the
+            connection card above.
+          </p>
+        ) : null}
+      </AccountSwitchLoadingOverlay>
     </div>
   );
 }

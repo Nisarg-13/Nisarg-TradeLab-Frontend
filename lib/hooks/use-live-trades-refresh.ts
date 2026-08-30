@@ -29,8 +29,10 @@ export function useLiveTradesRefresh({
   const [data, setData] = useState(initialData);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAccountSwitchLoading, setIsAccountSwitchLoading] = useState(false);
   const fetchInFlightRef = useRef(false);
   const skipInitialRefreshRef = useRef(skipInitialRefresh);
+  const previousAccountIdRef = useRef<string | null>(null);
 
   const filteredConnections = accountId
     ? data.connections.filter(
@@ -90,6 +92,10 @@ export function useLiveTradesRefresh({
     if (!isReady) return;
 
     let intervalId: number | undefined;
+    const previousAccountId = previousAccountIdRef.current;
+    const isAccountSwitch =
+      previousAccountId !== null && previousAccountId !== accountId;
+    previousAccountIdRef.current = accountId;
 
     const startPolling = () => {
       if (intervalId !== undefined) {
@@ -110,9 +116,25 @@ export function useLiveTradesRefresh({
       }
     };
 
-    if (!skipInitialRefreshRef.current) {
-      void refreshLiveTrades({ silent: true });
+    async function loadForAccount() {
+      if (isAccountSwitch) {
+        setIsAccountSwitchLoading(true);
+      }
+
+      try {
+        if (!skipInitialRefreshRef.current) {
+          await refreshLiveTrades({ silent: true });
+        } else {
+          skipInitialRefreshRef.current = false;
+        }
+      } finally {
+        if (isAccountSwitch) {
+          setIsAccountSwitchLoading(false);
+        }
+      }
     }
+
+    void loadForAccount();
 
     startPolling();
 
@@ -140,6 +162,7 @@ export function useLiveTradesRefresh({
     lastRefreshedAt,
     lastMt5SnapshotAt,
     isRefreshing,
+    isAccountSwitchLoading,
     refreshLiveTrades,
   };
 }

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { AccountSwitchLoadingOverlay } from "@/components/layout/account-switch-loading-overlay";
 import { DashboardSummaryCards } from "@/components/dashboard/dashboard-summary-cards";
 import { DailyPerformanceCalendar } from "@/components/dashboard/daily-performance-calendar";
 import { EquityCurveChart } from "@/components/dashboard/equity-curve-chart";
@@ -31,10 +32,12 @@ import {
 import { useLiveTradesRefresh } from "@/lib/hooks/use-live-trades-refresh";
 import { useFormatDateTime } from "@/lib/hooks/use-format-datetime";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
-import { useAutoReloadOnAccountChange } from "@/lib/hooks/use-auto-reload-on-account-change";
+import {
+  resolveAccountLabel,
+  useAccountSwitchLoading,
+} from "@/lib/hooks/use-account-switch-loading";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
-import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type {
   AnalyticsSummary,
@@ -83,12 +86,14 @@ export function DashboardManager({
     user?.firstName ??
     user?.primaryEmailAddress?.emailAddress ??
     null;
-  const { accountId, setAccountId, isReady } = usePersistedAccountId(accounts);
+  const { accountId, setAccountId, isReady } = usePersistedAccountId(
+    accounts,
+    serverSelectedAccountId,
+  );
   const [summary, setSummary] = useState(initialSummary);
   const [instruments, setInstruments] = useState(initialInstruments);
   const [strategies, setStrategies] = useState(initialStrategies);
   const [recentTrades, setRecentTrades] = useState(initialRecentTrades);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -134,8 +139,6 @@ export function DashboardManager({
       setInstruments(cached.instruments);
       setStrategies(cached.strategies);
       setRecentTrades(cached.recentTrades);
-    } else {
-      setIsRefreshing(true);
     }
 
     try {
@@ -183,24 +186,27 @@ export function DashboardManager({
           err instanceof Error ? err.message : "Failed to refresh dashboard.",
         );
       }
-    } finally {
-      if (requestIdRef.current === requestId) {
-        setIsRefreshing(false);
-      }
     }
   }, [accountId, getAuthToken, refreshLiveTrades]);
 
-  useAutoReloadOnAccountChange(isReady, accountId, handleApplyFilter, {
-    skipInitial: shouldSkipServerMatchedAccountLoad(
-      accountId,
-      serverSelectedAccountId,
-    ),
-  });
+  const { isAccountSwitchLoading } = useAccountSwitchLoading(
+    isReady,
+    accountId,
+    handleApplyFilter,
+    {
+      skipInitial: shouldSkipServerMatchedAccountLoad(
+        accountId,
+        serverSelectedAccountId,
+      ),
+    },
+  );
 
   useTradeDataRefresh(isReady, handleApplyFilter);
 
+  const accountLabel = resolveAccountLabel(accounts, accountId);
+
   return (
-    <div className={cn("space-y-6", isRefreshing && "opacity-90")}>
+    <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <PageHeader
           eyebrow="Dashboard"
@@ -223,39 +229,44 @@ export function DashboardManager({
         </div>
       </div>
 
-      <DashboardSummaryCards summary={summary} />
+      <AccountSwitchLoadingOverlay
+        isLoading={isAccountSwitchLoading}
+        accountLabel={accountLabel}
+      >
+        <DashboardSummaryCards summary={summary} />
 
-      <OpenPositionsCard
-        positions={positions}
-        showViewAll
-        title="Live positions"
-        description={
-          lastMt5SnapshotAt
-            ? `Open journal positions with MT5 live pricing. MT5 data last received ${formatApp(lastMt5SnapshotAt)}.`
-            : "Open journal positions with MT5 live pricing when sync is active."
-        }
-      />
-
-      <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
-        <EquityCurveChart data={summary.equityCurve} />
-        <DailyPerformanceCalendar
-          days={summary.calendar}
-          currency={summary.currency}
+        <OpenPositionsCard
+          positions={positions}
+          showViewAll
+          title="Live positions"
+          description={
+            lastMt5SnapshotAt
+              ? `Open journal positions with MT5 live pricing. MT5 data last received ${formatApp(lastMt5SnapshotAt)}.`
+              : "Open journal positions with MT5 live pricing when sync is active."
+          }
         />
-      </div>
 
-      <RecentTradesCard trades={recentTrades} />
+        <div className="grid gap-6 xl:grid-cols-2 xl:items-stretch">
+          <EquityCurveChart data={summary.equityCurve} />
+          <DailyPerformanceCalendar
+            days={summary.calendar}
+            currency={summary.currency}
+          />
+        </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <InstrumentPerformanceTable
-          rows={instruments}
-          currency={summary.currency}
-        />
-        <StrategyPerformanceTable
-          rows={strategies}
-          currency={summary.currency}
-        />
-      </div>
+        <RecentTradesCard trades={recentTrades} />
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <InstrumentPerformanceTable
+            rows={instruments}
+            currency={summary.currency}
+          />
+          <StrategyPerformanceTable
+            rows={strategies}
+            currency={summary.currency}
+          />
+        </div>
+      </AccountSwitchLoadingOverlay>
     </div>
   );
 }

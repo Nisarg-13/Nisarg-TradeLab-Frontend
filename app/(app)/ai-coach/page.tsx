@@ -31,6 +31,7 @@ export default async function AiCoachPage() {
   return (
     <AiCoachManager
       accounts={accounts}
+      serverSelectedAccountId={selectedAccountId ?? ""}
       initialAnalyses={analyses}
       initialChatHistory={chatHistory}
     />

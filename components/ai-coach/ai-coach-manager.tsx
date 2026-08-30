@@ -17,6 +17,7 @@ import { AiCoachChat } from "@/components/ai-coach/ai-coach-chat";
 import { AiCoachGeneratingOverlay } from "@/components/ai-coach/ai-coach-generating-overlay";
 import { FormattedDateTime } from "@/components/formatting/formatted-datetime";
 import { PageHeader } from "@/components/layout/page-header";
+import { AccountSwitchLoadingOverlay } from "@/components/layout/account-switch-loading-overlay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +41,7 @@ import {
 } from "@/lib/constants/ai-coach-periods";
 import { useClientAuthToken } from "@/lib/auth/client";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
+import { resolveAccountLabel } from "@/lib/hooks/use-account-switch-loading";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type {
@@ -123,16 +125,18 @@ function BulletSection({
 
 export function AiCoachManager({
   accounts,
+  serverSelectedAccountId = "",
   initialAnalyses,
   initialChatHistory,
 }: {
   accounts: TradingAccount[];
+  serverSelectedAccountId?: string;
   initialAnalyses: AiAnalysis[];
   initialChatHistory: AiChatMessage[];
 }) {
   const getAuthToken = useClientAuthToken();
   const { accountId: selectedAccountId, setAccountId: setSelectedAccountId } =
-    usePersistedAccountId(accounts);
+    usePersistedAccountId(accounts, serverSelectedAccountId);
   const [tab, setTab] = useState<CoachTab>("analysis");
   const [analyses, setAnalyses] = useState(initialAnalyses);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState(
@@ -143,6 +147,7 @@ export function AiCoachManager({
     useState<AiPeriodPreset>(DEFAULT_AI_PERIOD);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
+  const [isAccountSwitchLoading, setIsAccountSwitchLoading] = useState(false);
 
   const scopeQuery = useMemo(
     () => ({
@@ -169,15 +174,20 @@ export function AiCoachManager({
   async function handleAccountChange(value: string) {
     setSelectedAccountId(value);
     setSelectedAnalysisId("");
+    setIsAccountSwitchLoading(true);
 
-    const accountFilter = value ? { tradingAccountId: value } : {};
-    const [analysesResponse, chatResponse] = await Promise.all([
-      listAiAnalyses(getAuthToken, accountFilter),
-      listAiChatHistory(getAuthToken, accountFilter),
-    ]);
+    try {
+      const accountFilter = value ? { tradingAccountId: value } : {};
+      const [analysesResponse, chatResponse] = await Promise.all([
+        listAiAnalyses(getAuthToken, accountFilter),
+        listAiChatHistory(getAuthToken, accountFilter),
+      ]);
 
-    setAnalyses(analysesResponse.data);
-    setChatHistory(chatResponse.data);
+      setAnalyses(analysesResponse.data);
+      setChatHistory(chatResponse.data);
+    } finally {
+      setIsAccountSwitchLoading(false);
+    }
   }
 
   const accountOptions = useMemo(
@@ -334,216 +344,226 @@ export function AiCoachManager({
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setTab(item.id)}
-            className={cn(
-              "rounded-full border px-4 py-2 text-sm transition-colors",
-              tab === item.id
-                ? "border-primary bg-primary/10 text-primary"
-                : "hover:bg-muted/50",
-            )}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "analysis" ? (
-        <div className="space-y-6">
-          {selectedAnalysis ? (
-            <>
-              <Card className="border-primary/20 from-primary/10 bg-gradient-to-br to-transparent">
-                <CardHeader className="gap-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <BarChart3 className="text-primary size-5" />
-                      Executive summary
-                    </CardTitle>
-                    <Badge
-                      className={confidenceTone(
-                        selectedAnalysis.sampleConfidence,
-                      )}
-                    >
-                      {selectedAnalysis.sampleConfidence} confidence
-                    </Badge>
-                    <Badge variant="outline">
-                      {selectedAnalysis.sampleSize} closed trades
-                    </Badge>
-                    {selectedAnalysis.periodLabel ? (
-                      <Badge variant="outline">
-                        {selectedAnalysis.periodLabel}
-                      </Badge>
-                    ) : null}
-                    <Badge
-                      variant={
-                        selectedAnalysis.source === "openai" ||
-                        selectedAnalysis.source === "gemini"
-                          ? "default"
-                          : "outline"
-                      }
-                    >
-                      {selectedAnalysis.source === "openai"
-                        ? "OpenAI report"
-                        : selectedAnalysis.source === "gemini"
-                          ? "Gemini report"
-                          : "Analytics-based report"}
-                    </Badge>
-                  </div>
-                  <CardDescription className="text-foreground/90 text-base leading-relaxed">
-                    {selectedAnalysis.summary}
-                  </CardDescription>
-                  {selectedAnalysis.fallbackReason ? (
-                    <p className="text-sm text-amber-600 dark:text-amber-400">
-                      OpenAI was not used for this report:{" "}
-                      {selectedAnalysis.fallbackReason}
-                    </p>
-                  ) : null}
-                </CardHeader>
-              </Card>
-
-              <div className="grid gap-6 xl:grid-cols-2">
-                <BulletSection
-                  title="What you're doing best"
-                  description="Strengths to protect and scale."
-                  items={selectedAnalysis.strengths}
-                  icon={TrendingUp}
-                  tone="positive"
-                />
-                <BulletSection
-                  title="What's hurting your results"
-                  description="Leaks that are costing you money."
-                  items={selectedAnalysis.weaknesses}
-                  icon={TrendingDown}
-                  tone="negative"
-                />
-                <BulletSection
-                  title="Patterns in your trading"
-                  description="Timing, instruments, direction, and behavior trends."
-                  items={selectedAnalysis.patterns}
-                  icon={BarChart3}
-                />
-                <BulletSection
-                  title="How to maximize profits & improve"
-                  description="Prioritized actions based on your data."
-                  items={selectedAnalysis.recommendations}
-                  icon={Lightbulb}
-                  tone="accent"
-                />
-                <BulletSection
-                  title="Rules to minimize losses"
-                  description="Guardrails for your next trades."
-                  items={selectedAnalysis.rulesForNextTrades}
-                  icon={Shield}
-                  tone="warning"
-                />
-                <BulletSection
-                  title="Data to log for better analysis"
-                  description="Fill these gaps in your journal for deeper coaching."
-                  items={selectedAnalysis.dataLimitations}
-                  icon={AlertTriangle}
-                />
-              </div>
-            </>
-          ) : (
-            <Card>
-              <CardContent className="text-muted-foreground py-10 text-sm">
-                Generate an analysis to see personalized coaching on profits,
-                losses, patterns, and journal gaps.
-              </CardContent>
-            </Card>
-          )}
+      <AccountSwitchLoadingOverlay
+        isLoading={isAccountSwitchLoading}
+        accountLabel={resolveAccountLabel(accounts, selectedAccountId)}
+      >
+        <div className="flex flex-wrap gap-2">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setTab(item.id)}
+              className={cn(
+                "rounded-full border px-4 py-2 text-sm transition-colors",
+                tab === item.id
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "hover:bg-muted/50",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
-      ) : null}
 
-      {tab === "chat" ? (
-        <AiCoachChat
-          key={selectedAccountId || "all"}
-          messages={filteredChatHistory}
-          isAsking={isAsking}
-          onAsk={handleAskQuestion}
-        />
-      ) : null}
-
-      {tab === "history" ? (
-        <div className="grid gap-6 xl:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Analysis Reports</CardTitle>
-              <CardDescription>
-                {filteredAnalyses.length} saved report
-                {filteredAnalyses.length === 1 ? "" : "s"} — click to open
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {filteredAnalyses.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No reports yet.</p>
-              ) : (
-                filteredAnalyses.map((analysis) => (
-                  <button
-                    key={analysis.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedAnalysisId(analysis.id);
-                      setTab("analysis");
-                    }}
-                    className={cn(
-                      "hover:bg-muted/50 w-full rounded-lg border px-4 py-3 text-left transition-colors",
-                      selectedAnalysisId === analysis.id &&
-                        "border-primary bg-primary/5",
-                    )}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">
-                        <FormattedDateTime value={analysis.createdAt} />
-                      </p>
+        {tab === "analysis" ? (
+          <div className="space-y-6">
+            {selectedAnalysis ? (
+              <>
+                <Card className="border-primary/20 from-primary/10 bg-gradient-to-br to-transparent">
+                  <CardHeader className="gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <BarChart3 className="text-primary size-5" />
+                        Executive summary
+                      </CardTitle>
                       <Badge
-                        className={confidenceTone(analysis.sampleConfidence)}
+                        className={confidenceTone(
+                          selectedAnalysis.sampleConfidence,
+                        )}
                       >
-                        {analysis.sampleConfidence}
+                        {selectedAnalysis.sampleConfidence} confidence
                       </Badge>
                       <Badge variant="outline">
-                        {analysis.sampleSize} trades
+                        {selectedAnalysis.sampleSize} closed trades
+                      </Badge>
+                      {selectedAnalysis.periodLabel ? (
+                        <Badge variant="outline">
+                          {selectedAnalysis.periodLabel}
+                        </Badge>
+                      ) : null}
+                      <Badge
+                        variant={
+                          selectedAnalysis.source === "openai" ||
+                          selectedAnalysis.source === "gemini"
+                            ? "default"
+                            : "outline"
+                        }
+                      >
+                        {selectedAnalysis.source === "openai"
+                          ? "OpenAI report"
+                          : selectedAnalysis.source === "gemini"
+                            ? "Gemini report"
+                            : "Analytics-based report"}
                       </Badge>
                     </div>
-                    <p className="text-muted-foreground mt-2 line-clamp-2 text-sm">
-                      {analysis.summary}
-                    </p>
-                  </button>
-                ))
-              )}
-            </CardContent>
-          </Card>
+                    <CardDescription className="text-foreground/90 text-base leading-relaxed">
+                      {selectedAnalysis.summary}
+                    </CardDescription>
+                    {selectedAnalysis.fallbackReason ? (
+                      <p className="text-sm text-amber-600 dark:text-amber-400">
+                        OpenAI was not used for this report:{" "}
+                        {selectedAnalysis.fallbackReason}
+                      </p>
+                    ) : null}
+                  </CardHeader>
+                </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Chat History</CardTitle>
-              <CardDescription>
-                Previous Ask My Journal questions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {filteredChatHistory.length === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  No questions yet for this account.
-                </p>
-              ) : (
-                filteredChatHistory.map((message) => (
-                  <div key={message.id} className="rounded-lg border px-4 py-3">
-                    <p className="font-medium">{message.question}</p>
-                    <p className="text-muted-foreground mt-2 text-sm">
-                      {message.answer.summary}
-                    </p>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
+                <div className="grid gap-6 xl:grid-cols-2">
+                  <BulletSection
+                    title="What you're doing best"
+                    description="Strengths to protect and scale."
+                    items={selectedAnalysis.strengths}
+                    icon={TrendingUp}
+                    tone="positive"
+                  />
+                  <BulletSection
+                    title="What's hurting your results"
+                    description="Leaks that are costing you money."
+                    items={selectedAnalysis.weaknesses}
+                    icon={TrendingDown}
+                    tone="negative"
+                  />
+                  <BulletSection
+                    title="Patterns in your trading"
+                    description="Timing, instruments, direction, and behavior trends."
+                    items={selectedAnalysis.patterns}
+                    icon={BarChart3}
+                  />
+                  <BulletSection
+                    title="How to maximize profits & improve"
+                    description="Prioritized actions based on your data."
+                    items={selectedAnalysis.recommendations}
+                    icon={Lightbulb}
+                    tone="accent"
+                  />
+                  <BulletSection
+                    title="Rules to minimize losses"
+                    description="Guardrails for your next trades."
+                    items={selectedAnalysis.rulesForNextTrades}
+                    icon={Shield}
+                    tone="warning"
+                  />
+                  <BulletSection
+                    title="Data to log for better analysis"
+                    description="Fill these gaps in your journal for deeper coaching."
+                    items={selectedAnalysis.dataLimitations}
+                    icon={AlertTriangle}
+                  />
+                </div>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="text-muted-foreground py-10 text-sm">
+                  Generate an analysis to see personalized coaching on profits,
+                  losses, patterns, and journal gaps.
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : null}
+
+        {tab === "chat" ? (
+          <AiCoachChat
+            key={selectedAccountId || "all"}
+            messages={filteredChatHistory}
+            isAsking={isAsking}
+            onAsk={handleAskQuestion}
+          />
+        ) : null}
+
+        {tab === "history" ? (
+          <div className="grid gap-6 xl:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Analysis Reports</CardTitle>
+                <CardDescription>
+                  {filteredAnalyses.length} saved report
+                  {filteredAnalyses.length === 1 ? "" : "s"} — click to open
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {filteredAnalyses.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    No reports yet.
+                  </p>
+                ) : (
+                  filteredAnalyses.map((analysis) => (
+                    <button
+                      key={analysis.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAnalysisId(analysis.id);
+                        setTab("analysis");
+                      }}
+                      className={cn(
+                        "hover:bg-muted/50 w-full rounded-lg border px-4 py-3 text-left transition-colors",
+                        selectedAnalysisId === analysis.id &&
+                          "border-primary bg-primary/5",
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium">
+                          <FormattedDateTime value={analysis.createdAt} />
+                        </p>
+                        <Badge
+                          className={confidenceTone(analysis.sampleConfidence)}
+                        >
+                          {analysis.sampleConfidence}
+                        </Badge>
+                        <Badge variant="outline">
+                          {analysis.sampleSize} trades
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground mt-2 line-clamp-2 text-sm">
+                        {analysis.summary}
+                      </p>
+                    </button>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Chat History</CardTitle>
+                <CardDescription>
+                  Previous Ask My Journal questions
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {filteredChatHistory.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    No questions yet for this account.
+                  </p>
+                ) : (
+                  filteredChatHistory.map((message) => (
+                    <div
+                      key={message.id}
+                      className="rounded-lg border px-4 py-3"
+                    >
+                      <p className="font-medium">{message.question}</p>
+                      <p className="text-muted-foreground mt-2 text-sm">
+                        {message.answer.summary}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
+      </AccountSwitchLoadingOverlay>
     </div>
   );
 }

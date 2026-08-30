@@ -1,5 +1,8 @@
 export type SampleConfidence = "HIGH" | "MODERATE" | "LOW" | "INSUFFICIENT";
 
+export type AiPeriodPreset =
+  "all_time" | "yesterday" | "last_week" | "last_month";
+
 export type AiAnalysis = {
   id: string;
   tradingAccountId: string | null;
@@ -14,6 +17,8 @@ export type AiAnalysis = {
   dataLimitations: string[];
   source: "openai" | "gemini" | "analytics";
   fallbackReason: string | null;
+  periodLabel?: string | null;
+  periodPreset?: AiPeriodPreset | null;
   createdAt: string;
 };
 
@@ -21,24 +26,35 @@ export type AiChatAnswer = {
   intent: string;
   confidence: SampleConfidence;
   summary: string;
-  evidence: string[];
-  limitations: string[];
+  strengths?: string[];
+  weaknesses?: string[];
+  avoid?: string[];
+  focus?: string[];
+  instruments?: string[];
+  evidence?: string[];
+  limitations?: string[];
+  timezone?: string | null;
+  periodLabel?: string | null;
 };
 
 export type AiChatMessage = {
   id: string;
+  tradingAccountId: string | null;
+  periodPreset?: AiPeriodPreset | null;
   question: string;
   answer: AiChatAnswer;
   createdAt: string;
 };
 
-export type AiAnalysisQuery = {
+export type AiScopeQuery = {
   tradingAccountId?: string;
+  periodPreset?: AiPeriodPreset;
 };
 
-export type AiChatInput = {
+export type AiAnalysisQuery = AiScopeQuery;
+
+export type AiChatInput = AiScopeQuery & {
   question: string;
-  tradingAccountId?: string;
 };
 
 export type ApiDataResponse<T> = {

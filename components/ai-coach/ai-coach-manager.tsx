@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  Ban,
   BarChart3,
   Bot,
+  Clock,
   Lightbulb,
   Shield,
   Sparkles,
+  Target,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -34,11 +37,21 @@ import {
   listAiAnalyses,
   listAiChatHistory,
 } from "@/lib/api/ai";
+import {
+  AI_PERIOD_OPTIONS,
+  DEFAULT_AI_PERIOD,
+} from "@/lib/constants/ai-coach-periods";
 import { useClientAuthToken } from "@/lib/auth/client";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
-import type { AiAnalysis, AiChatMessage, SampleConfidence } from "@/types/ai";
+import type {
+  AiAnalysis,
+  AiChatAnswer,
+  AiChatMessage,
+  AiPeriodPreset,
+  SampleConfidence,
+} from "@/types/ai";
 
 const TABS = [
   { id: "analysis", label: "Analysis" },
@@ -112,6 +125,56 @@ function BulletSection({
   );
 }
 
+function ChatAnswerSections({ answer }: { answer: AiChatAnswer }) {
+  return (
+    <div className="space-y-4">
+      <p className="text-foreground/90 leading-relaxed">{answer.summary}</p>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <BulletSection
+          title="What you're doing best"
+          items={answer.strengths ?? []}
+          icon={TrendingUp}
+          tone="positive"
+        />
+        <BulletSection
+          title="What's hurting your results"
+          items={answer.weaknesses ?? []}
+          icon={TrendingDown}
+          tone="negative"
+        />
+        <BulletSection
+          title="What to avoid"
+          items={answer.avoid ?? []}
+          icon={Ban}
+          tone="warning"
+        />
+        <BulletSection
+          title="What to focus on"
+          items={answer.focus ?? []}
+          icon={Target}
+          tone="accent"
+        />
+        <BulletSection
+          title="Instrument insights"
+          description="Performance by symbol in the selected scope."
+          items={answer.instruments ?? []}
+          icon={BarChart3}
+        />
+        <BulletSection
+          title="Supporting evidence"
+          items={answer.evidence ?? []}
+        />
+        <BulletSection
+          title="Limitations"
+          items={answer.limitations ?? []}
+          icon={AlertTriangle}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function AiCoachManager({
   accounts,
   initialAnalyses,
@@ -130,9 +193,47 @@ export function AiCoachManager({
     initialAnalyses[0]?.id ?? "",
   );
   const [chatHistory, setChatHistory] = useState(initialChatHistory);
+  const [periodPreset, setPeriodPreset] =
+    useState<AiPeriodPreset>(DEFAULT_AI_PERIOD);
   const [question, setQuestion] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
+
+  const scopeQuery = useMemo(
+    () => ({
+      tradingAccountId: selectedAccountId || undefined,
+      periodPreset,
+    }),
+    [periodPreset, selectedAccountId],
+  );
+
+  const refreshHistory = useCallback(async () => {
+    const accountFilter = selectedAccountId
+      ? { tradingAccountId: selectedAccountId }
+      : {};
+
+    const [analysesResponse, chatResponse] = await Promise.all([
+      listAiAnalyses(getAuthToken, accountFilter),
+      listAiChatHistory(getAuthToken, accountFilter),
+    ]);
+
+    setAnalyses(analysesResponse.data);
+    setChatHistory(chatResponse.data);
+  }, [getAuthToken, selectedAccountId]);
+
+  async function handleAccountChange(value: string) {
+    setSelectedAccountId(value);
+    setSelectedAnalysisId("");
+
+    const accountFilter = value ? { tradingAccountId: value } : {};
+    const [analysesResponse, chatResponse] = await Promise.all([
+      listAiAnalyses(getAuthToken, accountFilter),
+      listAiChatHistory(getAuthToken, accountFilter),
+    ]);
+
+    setAnalyses(analysesResponse.data);
+    setChatHistory(chatResponse.data);
+  }
 
   const accountOptions = useMemo(
     () => [
@@ -155,6 +256,20 @@ export function AiCoachManager({
     [analyses, selectedAccountId],
   );
 
+  const filteredChatHistory = useMemo(
+    () =>
+      selectedAccountId
+        ? chatHistory.filter(
+            (message) => message.tradingAccountId === selectedAccountId,
+          )
+        : chatHistory,
+    [chatHistory, selectedAccountId],
+  );
+
+  const selectedPeriodLabel =
+    AI_PERIOD_OPTIONS.find((option) => option.value === periodPreset)?.label ??
+    "All time";
+
   const selectedAnalysis =
     filteredAnalyses.find((analysis) => analysis.id === selectedAnalysisId) ??
     filteredAnalyses[0] ??
@@ -164,11 +279,8 @@ export function AiCoachManager({
     setIsGenerating(true);
 
     try {
-      const response = await generateAiAnalysis(getAuthToken, {
-        tradingAccountId: selectedAccountId || undefined,
-      });
-      const history = await listAiAnalyses(getAuthToken);
-      setAnalyses(history.data);
+      const response = await generateAiAnalysis(getAuthToken, scopeQuery);
+      await refreshHistory();
       setSelectedAnalysisId(response.data.id);
       setTab("analysis");
       toast.success("AI analysis generated.");
@@ -192,10 +304,9 @@ export function AiCoachManager({
     try {
       const response = await askAiJournal(getAuthToken, {
         question: question.trim(),
-        tradingAccountId: selectedAccountId || undefined,
+        ...scopeQuery,
       });
-      const history = await listAiChatHistory(getAuthToken);
-      setChatHistory(history.data);
+      await refreshHistory();
       setQuestion("");
       setTab("chat");
       toast.success("Answer ready.");
@@ -242,23 +353,47 @@ export function AiCoachManager({
           <div>
             <CardTitle>Scope</CardTitle>
             <CardDescription>
-              Filter coaching to a specific trading account or use all accounts.
+              Coaching uses the selected account and time period. Other accounts
+              are excluded from the analysis.
             </CardDescription>
           </div>
-          <div className="w-full max-w-xs space-y-2">
-            <Label htmlFor="coach-account">Trading account</Label>
-            <DropdownSelect
-              id="coach-account"
-              name="coach-account"
-              value={selectedAccountId}
-              onValueChange={(value) => {
-                setSelectedAccountId(value);
-                setSelectedAnalysisId("");
-              }}
-              options={accountOptions}
-            />
+          <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="coach-account">Trading account</Label>
+              <DropdownSelect
+                id="coach-account"
+                name="coach-account"
+                value={selectedAccountId}
+                onValueChange={(value) => {
+                  void handleAccountChange(value);
+                }}
+                options={accountOptions}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="coach-period">Time period</Label>
+              <DropdownSelect
+                id="coach-period"
+                name="coach-period"
+                value={periodPreset}
+                onValueChange={(value) =>
+                  setPeriodPreset(value as AiPeriodPreset)
+                }
+                options={AI_PERIOD_OPTIONS}
+              />
+            </div>
           </div>
         </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">
+            Analyzing{" "}
+            {selectedAccountId
+              ? (accounts.find((account) => account.id === selectedAccountId)
+                  ?.name ?? "selected account")
+              : "all accounts"}{" "}
+            · {selectedPeriodLabel.toLowerCase()}
+          </p>
+        </CardContent>
       </Card>
 
       <div className="flex flex-wrap gap-2">
@@ -300,6 +435,11 @@ export function AiCoachManager({
                     <Badge variant="outline">
                       {selectedAnalysis.sampleSize} closed trades
                     </Badge>
+                    {selectedAnalysis.periodLabel ? (
+                      <Badge variant="outline">
+                        {selectedAnalysis.periodLabel}
+                      </Badge>
+                    ) : null}
                     <Badge
                       variant={
                         selectedAnalysis.source === "openai" ||
@@ -387,8 +527,9 @@ export function AiCoachManager({
             <CardHeader>
               <CardTitle>Ask My Journal</CardTitle>
               <CardDescription>
-                Ask about best instruments, timing, strategy performance, plan
-                compliance, mistakes, or recent changes.
+                Ask for coaching on strengths, weaknesses, instruments, timing,
+                and what to focus on. Answers respect the account and period
+                selected above.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -399,7 +540,7 @@ export function AiCoachManager({
                   rows={3}
                   value={question}
                   onChange={(event) => setQuestion(event.target.value)}
-                  placeholder="What is my best performing instrument this month?"
+                  placeholder="How should I trade today? What am I doing best and what should I avoid?"
                 />
               </div>
               <Button
@@ -413,14 +554,14 @@ export function AiCoachManager({
           </Card>
 
           <div className="space-y-4">
-            {chatHistory.length === 0 ? (
+            {filteredChatHistory.length === 0 ? (
               <Card>
                 <CardContent className="text-muted-foreground py-8 text-sm">
-                  Your Q&A history will appear here.
+                  Your Q&A history will appear here for the selected account.
                 </CardContent>
               </Card>
             ) : (
-              chatHistory.map((message) => (
+              filteredChatHistory.map((message) => (
                 <Card key={message.id}>
                   <CardHeader className="gap-3">
                     <div className="flex flex-wrap items-center gap-2">
@@ -433,21 +574,24 @@ export function AiCoachManager({
                       >
                         {message.answer.confidence}
                       </Badge>
+                      {message.answer.periodLabel ? (
+                        <Badge variant="outline">
+                          {message.answer.periodLabel}
+                        </Badge>
+                      ) : null}
+                      {message.answer.timezone ? (
+                        <Badge variant="outline" className="gap-1">
+                          <Clock className="size-3" aria-hidden="true" />
+                          {message.answer.timezone}
+                        </Badge>
+                      ) : null}
                     </div>
                     <CardDescription>
                       <FormattedDateTime value={message.createdAt} />
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p>{message.answer.summary}</p>
-                    <BulletSection
-                      title="Evidence"
-                      items={message.answer.evidence}
-                    />
-                    <BulletSection
-                      title="Limitations"
-                      items={message.answer.limitations}
-                    />
+                  <CardContent>
+                    <ChatAnswerSections answer={message.answer} />
                   </CardContent>
                 </Card>
               ))
@@ -514,12 +658,12 @@ export function AiCoachManager({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {chatHistory.length === 0 ? (
+              {filteredChatHistory.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  No questions yet.
+                  No questions yet for this account.
                 </p>
               ) : (
-                chatHistory.map((message) => (
+                filteredChatHistory.map((message) => (
                   <div key={message.id} className="rounded-lg border px-4 py-3">
                     <p className="font-medium">{message.question}</p>
                     <p className="text-muted-foreground mt-2 text-sm">

@@ -4,14 +4,19 @@ import type {
   AiAnalysisQuery,
   AiChatInput,
   AiChatMessage,
+  AiScopeQuery,
   ApiDataResponse,
 } from "@/types/ai";
 
-function buildQuery(params: AiAnalysisQuery) {
+function buildScopeQuery(params: AiScopeQuery = {}) {
   const search = new URLSearchParams();
 
   if (params.tradingAccountId) {
     search.set("tradingAccountId", params.tradingAccountId);
+  }
+
+  if (params.periodPreset && params.periodPreset !== "all_time") {
+    search.set("periodPreset", params.periodPreset);
   }
 
   const query = search.toString();
@@ -23,17 +28,29 @@ export async function generateAiAnalysis(
   query: AiAnalysisQuery = {},
 ) {
   return apiRequest<ApiDataResponse<AiAnalysis>>(
-    `/api/v1/ai/analysis${buildQuery(query)}`,
+    `/api/v1/ai/analysis${buildScopeQuery(query)}`,
     { method: "POST", getAuthToken },
   );
 }
 
 export async function listAiAnalyses(
   getAuthToken: () => Promise<string | null>,
+  query: Pick<AiScopeQuery, "tradingAccountId"> = {},
 ) {
-  return apiRequest<ApiDataResponse<AiAnalysis[]>>("/api/v1/ai/analysis", {
-    getAuthToken,
-  });
+  const search = new URLSearchParams();
+
+  if (query.tradingAccountId) {
+    search.set("tradingAccountId", query.tradingAccountId);
+  }
+
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+
+  return apiRequest<ApiDataResponse<AiAnalysis[]>>(
+    `/api/v1/ai/analysis${suffix}`,
+    {
+      getAuthToken,
+    },
+  );
 }
 
 export async function getAiAnalysis(
@@ -59,9 +76,18 @@ export async function askAiJournal(
 
 export async function listAiChatHistory(
   getAuthToken: () => Promise<string | null>,
+  query: Pick<AiScopeQuery, "tradingAccountId"> = {},
 ) {
+  const search = new URLSearchParams();
+
+  if (query.tradingAccountId) {
+    search.set("tradingAccountId", query.tradingAccountId);
+  }
+
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+
   return apiRequest<ApiDataResponse<AiChatMessage[]>>(
-    "/api/v1/ai/chat/history",
+    `/api/v1/ai/chat/history${suffix}`,
     { getAuthToken },
   );
 }

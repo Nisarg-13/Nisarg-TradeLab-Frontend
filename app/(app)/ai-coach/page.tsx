@@ -12,20 +12,21 @@ export default async function AiCoachPage() {
     return <AiCoachAccessRequest />;
   }
 
-  const [analysesResult, chatHistory] = await Promise.all([
-    listAiAnalyses(getServerAuthToken)
+  const [analysesResult, chatHistoryResult] = await Promise.all([
+    listAiAnalyses(getServerAuthToken, {
+      tradingAccountId: selectedAccountId,
+    })
       .then((response) => response.data)
       .catch(() => [] as AiAnalysis[]),
-    listAiChatHistory(getServerAuthToken)
+    listAiChatHistory(getServerAuthToken, {
+      tradingAccountId: selectedAccountId,
+    })
       .then((response) => response.data)
       .catch(() => [] as AiChatMessage[]),
   ]);
 
-  const analyses = selectedAccountId
-    ? analysesResult.filter(
-        (analysis) => analysis.tradingAccountId === selectedAccountId,
-      )
-    : analysesResult;
+  const analyses = analysesResult;
+  const chatHistory = chatHistoryResult;
 
   return (
     <AiCoachManager

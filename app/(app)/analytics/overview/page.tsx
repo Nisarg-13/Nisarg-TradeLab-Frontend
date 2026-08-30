@@ -136,7 +136,7 @@ const EMPTY_COMPARISON: PeriodComparison = {
 
 export default async function AnalyticsOverviewPage() {
   const heatmapMetric: HeatmapMetric = "pnl";
-  const { accounts, query } = await getServerAppContext();
+  const { accounts, selectedAccountId, query } = await getServerAppContext();
 
   const [strategies, mistakes, tags, overviewBundle] = await Promise.all([
     listStrategies(getServerAuthToken)
@@ -166,6 +166,7 @@ export default async function AnalyticsOverviewPage() {
   return (
     <AnalyticsManager
       accounts={accounts}
+      serverSelectedAccountId={selectedAccountId ?? ""}
       strategies={strategies}
       tags={tags}
       mistakes={mistakes}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,9 +20,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
+import {
+  getCached,
+  setCached,
+  stableCacheKey,
+} from "@/lib/cache/account-data-cache";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
 import { useAutoReloadOnAccountChange } from "@/lib/hooks/use-auto-reload-on-account-change";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
+import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
+import {
+  canSortTradesClientSide,
+  sortTradesClientSide,
+} from "@/lib/trades/sort";
 import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
@@ -89,6 +99,23 @@ function countActiveFilters(filters: TradeListFilters) {
   return count;
 }
 
+function tradesCacheKey(
+  filters: TradeListFilters,
+  page: number,
+  limit: number,
+) {
+  return stableCacheKey({
+    scope: "trades",
+    page,
+    limit,
+    accountId: filters.accountId,
+    symbol: filters.symbol.trim().toUpperCase(),
+    status: filters.status,
+    direction: filters.direction,
+    sort: filters.sort,
+  });
+}
+
 export function TradesManager({
   initialTrades,
   initialMeta,
@@ -116,6 +143,7 @@ export function TradesManager({
   const [trades, setTrades] = useState(initialTrades);
   const [meta, setMeta] = useState(initialMeta);
   const [isLoading, setIsLoading] = useState(false);
+  const requestIdRef = useRef(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<TradeListFilters>(
     () => ({
@@ -132,6 +160,21 @@ export function TradesManager({
   const [pageSize] = useState(PAGE_SIZE);
   const [selectedTradeIds, setSelectedTradeIds] = useState<string[]>([]);
   const [showBulkJournal, setShowBulkJournal] = useState(false);
+
+  useEffect(() => {
+    const initialFilters: TradeListFilters = {
+      ...EMPTY_FILTERS,
+      accountId: serverSelectedAccountId,
+    };
+
+    setCached(
+      tradesCacheKey(initialFilters, initialMeta.page, initialMeta.limit),
+      {
+        trades: initialTrades,
+        meta: initialMeta,
+      },
+    );
+  }, [initialMeta, initialTrades, serverSelectedAccountId]);
 
   const selectedTrades = trades.filter((trade) =>
     selectedTradeIds.includes(trade.id),
@@ -150,8 +193,32 @@ export function TradesManager({
       nextPage = page,
       nextLimit = pageSize,
       nextFilters: TradeListFilters = appliedFilters,
+      options?: { silent?: boolean },
     ) => {
-      setIsLoading(true);
+      const cacheKey = tradesCacheKey(nextFilters, nextPage, nextLimit);
+      const cached = getCached<{
+        trades: Trade[];
+        meta: typeof initialMeta;
+      }>(cacheKey);
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
+
+      if (cached) {
+        setTrades(cached.trades);
+        setMeta(cached.meta);
+        setPage(cached.meta.page);
+        setAppliedFilters(nextFilters);
+        setDraftFilters(nextFilters);
+        setSelectedTradeIds((current) =>
+          current.filter((id) =>
+            cached.trades.some((trade) => trade.id === id),
+          ),
+        );
+      }
+
+      if (!cached && !options?.silent) {
+        setIsLoading(true);
+      }
 
       try {
         const response = await listTrades(getAuthToken, {
@@ -170,6 +237,14 @@ export function TradesManager({
             : {}),
         });
 
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+
+        setCached(cacheKey, {
+          trades: response.data,
+          meta: response.meta,
+        });
         setTrades(response.data);
         setMeta(response.meta);
         setPage(response.meta.page);
@@ -181,11 +256,19 @@ export function TradesManager({
           ),
         );
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to load trades.",
-        );
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+
+        if (!cached) {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to load trades.",
+          );
+        }
       } finally {
-        setIsLoading(false);
+        if (requestIdRef.current === requestId) {
+          setIsLoading(false);
+        }
       }
     },
     [appliedFilters, getAuthToken, page, pageSize],
@@ -204,8 +287,10 @@ export function TradesManager({
   }, [filtersWithAccount, loadTrades, pageSize]);
 
   useAutoReloadOnAccountChange(isReady, accountId, reloadTradesForAccount, {
-    // Always refetch when an account is selected — SSR may not match the filter state.
-    skipInitial: !accountId,
+    skipInitial: shouldSkipServerMatchedAccountLoad(
+      accountId,
+      serverSelectedAccountId,
+    ),
   });
 
   const refreshTrades = useCallback(() => {
@@ -238,6 +323,14 @@ export function TradesManager({
       ...appliedFilters,
       sort: nextSort,
     });
+
+    if (canSortTradesClientSide(meta)) {
+      setAppliedFilters(nextFilters);
+      setDraftFilters(nextFilters);
+      setTrades(sortTradesClientSide(trades, nextSort));
+      return;
+    }
+
     void loadTrades(1, pageSize, nextFilters);
   }
 
@@ -262,7 +355,6 @@ export function TradesManager({
             options={accountOptions}
             value={accountId}
             onValueChange={setAccountId}
-            disabled={isLoading}
           />
         </div>
       </div>
@@ -418,21 +510,28 @@ export function TradesManager({
             />
           ) : null}
 
-          {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading trades...</p>
-          ) : (
-            <TradesTable
-              trades={trades}
-              showAccount={!(appliedFilters.accountId || accountId)}
-              emptyMessage="No trades match these filters."
-              selectable
-              selectedTradeIds={selectedTradeIds}
-              onSelectedTradeIdsChange={setSelectedTradeIds}
-              sortable
-              sort={appliedFilters.sort}
-              onSortChange={handleSortChange}
-            />
-          )}
+          <div
+            className={cn(
+              "relative",
+              isLoading && trades.length > 0 && "opacity-70",
+            )}
+          >
+            {isLoading && trades.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Loading trades...</p>
+            ) : (
+              <TradesTable
+                trades={trades}
+                showAccount={!(appliedFilters.accountId || accountId)}
+                emptyMessage="No trades match these filters."
+                selectable
+                selectedTradeIds={selectedTradeIds}
+                onSelectedTradeIdsChange={setSelectedTradeIds}
+                sortable
+                sort={appliedFilters.sort}
+                onSortChange={handleSortChange}
+              />
+            )}
+          </div>
 
           <div className="flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-muted-foreground text-sm">

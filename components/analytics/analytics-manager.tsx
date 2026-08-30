@@ -31,25 +31,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  getAnalyticsSummary,
-  getConcentrationAnalytics,
-  getDirectionAnalytics,
-  getDurationAnalytics,
-  getHeatmapAnalytics,
-  getInsightsAnalytics,
-  getInstrumentPerformance,
-  getMistakeAnalytics,
-  getPeriodComparison,
-  getPlanCompliance,
-  getPsychologyAnalytics,
-  getRiskStats,
-  getRollingPerformance,
-  getSessionDashboard,
-  getStrategyPerformance,
-  getTagAnalytics,
-  getTimeAnalytics,
-} from "@/lib/api/analytics";
+import { getHeatmapAnalytics } from "@/lib/api/analytics";
 import { useClientAuthToken } from "@/lib/auth/client";
 import {
   ANALYTICS_TABS,
@@ -59,9 +41,20 @@ import {
   serializeAnalyticsTab,
   type AnalyticsTabId,
 } from "@/lib/analytics/query-state";
+import {
+  fetchAnalyticsSections,
+  getAnalyticsTabLoadKeys,
+  type AnalyticsTabLoadKey,
+} from "@/lib/analytics/tab-loaders";
+import {
+  getCached,
+  setCached,
+  stableCacheKey,
+} from "@/lib/cache/account-data-cache";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
 import { useAutoReloadOnAccountChange } from "@/lib/hooks/use-auto-reload-on-account-change";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
+import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
 import {
   TIMEZONE_CHANGE_EVENT,
   getTimezoneLabel,
@@ -97,8 +90,53 @@ import type {
 } from "@/types/analytics";
 import type { Mistake, Strategy, Tag } from "@/types/strategy";
 
+type AnalyticsTabSnapshot = {
+  summary?: AnalyticsSummary;
+  instruments?: InstrumentPerformance[];
+  sessionDashboard?: SessionDashboard;
+  strategyRows?: StrategyPerformance[];
+  planCompliance?: PlanComplianceGroup[];
+  riskStats?: RiskStatGroup[];
+  timeAnalytics?: TimeAnalytics;
+  heatmapCells?: HeatmapCell[];
+  psychology?: PsychologyAnalytics;
+  mistakeAnalytics?: MistakeAnalyticsGroup[];
+  durationAnalytics?: TradeMetricsGroup[];
+  rolling?: RollingPerformance;
+  comparison?: PeriodComparison;
+  directionAnalytics?: DirectionAnalytics;
+  tagAnalytics?: TagAnalyticsGroup[];
+  concentrationAnalytics?: ConcentrationAnalytics;
+  insightsAnalytics?: InsightsAnalytics;
+};
+
+function analyticsCacheKey(query: AnalyticsQuery, tab: AnalyticsTabId) {
+  return stableCacheKey({ scope: "analytics", tab, ...query });
+}
+
+const SECTION_FAILURE_LABELS: Record<AnalyticsTabLoadKey, string> = {
+  summary: "overview",
+  planCompliance: "plan compliance",
+  instruments: "instruments",
+  sessionDashboard: "sessions",
+  insights: "insights",
+  strategies: "strategies",
+  riskStats: "risk",
+  time: "time",
+  duration: "duration",
+  heatmap: "heatmap",
+  psychology: "psychology",
+  mistakes: "mistakes",
+  rolling: "rolling",
+  comparison: "comparison",
+  direction: "direction",
+  tags: "tags",
+  concentration: "concentration",
+};
+
 export function AnalyticsManager({
   accounts,
+  serverSelectedAccountId = "",
   strategies,
   tags,
   mistakes,
@@ -122,6 +160,7 @@ export function AnalyticsManager({
   initialInsights,
 }: {
   accounts: TradingAccount[];
+  serverSelectedAccountId?: string;
   strategies: Strategy[];
   tags: Tag[];
   mistakes: Mistake[];
@@ -165,7 +204,8 @@ export function AnalyticsManager({
     useState<AnalyticsQuery>(initialFilters);
   const [draftFilters, setDraftFilters] =
     useState<AnalyticsQuery>(initialFilters);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const requestIdRef = useRef(0);
   const [summary, setSummary] = useState(initialSummary);
   const [instruments, setInstruments] = useState(initialInstruments);
   const [sessionDashboard, setSessionDashboard] = useState(
@@ -201,8 +241,6 @@ export function AnalyticsManager({
     periodBTo: "",
   });
 
-  const currency = summary.currency;
-
   const queryFilters = useMemo<AnalyticsQuery>(
     () => ({
       ...appliedFilters,
@@ -212,6 +250,15 @@ export function AnalyticsManager({
     }),
     [accountId, appliedFilters, timezone],
   );
+
+  useEffect(() => {
+    setCached(analyticsCacheKey(queryFilters, "overview"), {
+      summary: initialSummary,
+      planCompliance: initialPlanCompliance,
+    });
+  }, [initialPlanCompliance, initialSummary, queryFilters]);
+
+  const currency = summary.currency;
 
   const localizedTimeAnalytics = useMemo(
     () => applyProfileTimeLabels(timeAnalytics),
@@ -245,8 +292,164 @@ export function AnalyticsManager({
     );
   }
 
+  function applyAnalyticsSnapshot(snapshot: AnalyticsTabSnapshot) {
+    if (snapshot.summary) {
+      setSummary(snapshot.summary);
+    }
+
+    if (snapshot.instruments) {
+      setInstruments(snapshot.instruments);
+    }
+
+    if (snapshot.sessionDashboard) {
+      setSessionDashboard(snapshot.sessionDashboard);
+    }
+
+    if (snapshot.strategyRows) {
+      setStrategyRows(snapshot.strategyRows);
+    }
+
+    if (snapshot.planCompliance) {
+      setPlanCompliance(snapshot.planCompliance);
+    }
+
+    if (snapshot.riskStats) {
+      setRiskStats(snapshot.riskStats);
+    }
+
+    if (snapshot.timeAnalytics) {
+      setTimeAnalytics(snapshot.timeAnalytics);
+    }
+
+    if (snapshot.heatmapCells) {
+      setHeatmapCells(snapshot.heatmapCells);
+    }
+
+    if (snapshot.psychology) {
+      setPsychology(snapshot.psychology);
+    }
+
+    if (snapshot.mistakeAnalytics) {
+      setMistakeAnalytics(snapshot.mistakeAnalytics);
+    }
+
+    if (snapshot.durationAnalytics) {
+      setDurationAnalytics(snapshot.durationAnalytics);
+    }
+
+    if (snapshot.rolling) {
+      setRolling(snapshot.rolling);
+    }
+
+    if (snapshot.comparison) {
+      setComparison(snapshot.comparison);
+    }
+
+    if (snapshot.directionAnalytics) {
+      setDirectionAnalytics(snapshot.directionAnalytics);
+    }
+
+    if (snapshot.tagAnalytics) {
+      setTagAnalytics(snapshot.tagAnalytics);
+    }
+
+    if (snapshot.concentrationAnalytics) {
+      setConcentrationAnalytics(snapshot.concentrationAnalytics);
+    }
+
+    if (snapshot.insightsAnalytics) {
+      setInsightsAnalytics(snapshot.insightsAnalytics);
+    }
+  }
+
+  function buildSnapshotFromSections(
+    sections: Partial<Record<AnalyticsTabLoadKey, { data: unknown } | null>>,
+  ): AnalyticsTabSnapshot {
+    const snapshot: AnalyticsTabSnapshot = {};
+
+    if (sections.summary) {
+      snapshot.summary = sections.summary.data as AnalyticsSummary;
+    }
+
+    if (sections.instruments) {
+      snapshot.instruments = sections.instruments
+        .data as InstrumentPerformance[];
+    }
+
+    if (sections.sessionDashboard) {
+      snapshot.sessionDashboard = sections.sessionDashboard
+        .data as SessionDashboard;
+    }
+
+    if (sections.strategies) {
+      snapshot.strategyRows = sections.strategies.data as StrategyPerformance[];
+    }
+
+    if (sections.planCompliance) {
+      snapshot.planCompliance = sections.planCompliance
+        .data as PlanComplianceGroup[];
+    }
+
+    if (sections.riskStats) {
+      snapshot.riskStats = sections.riskStats.data as RiskStatGroup[];
+    }
+
+    if (sections.time) {
+      snapshot.timeAnalytics = sections.time.data as TimeAnalytics;
+    }
+
+    if (sections.heatmap) {
+      snapshot.heatmapCells = (
+        sections.heatmap.data as { cells: HeatmapCell[] }
+      ).cells;
+    }
+
+    if (sections.psychology) {
+      snapshot.psychology = sections.psychology.data as PsychologyAnalytics;
+    }
+
+    if (sections.mistakes) {
+      snapshot.mistakeAnalytics = sections.mistakes
+        .data as MistakeAnalyticsGroup[];
+    }
+
+    if (sections.duration) {
+      snapshot.durationAnalytics = sections.duration
+        .data as TradeMetricsGroup[];
+    }
+
+    if (sections.rolling) {
+      snapshot.rolling = sections.rolling.data as RollingPerformance;
+    }
+
+    if (sections.comparison) {
+      snapshot.comparison = sections.comparison.data as PeriodComparison;
+    }
+
+    if (sections.direction) {
+      snapshot.directionAnalytics = sections.direction
+        .data as DirectionAnalytics;
+    }
+
+    if (sections.tags) {
+      snapshot.tagAnalytics = sections.tags.data as TagAnalyticsGroup[];
+    }
+
+    if (sections.concentration) {
+      snapshot.concentrationAnalytics = sections.concentration
+        .data as ConcentrationAnalytics;
+    }
+
+    if (sections.insights) {
+      snapshot.insightsAnalytics = sections.insights.data as InsightsAnalytics;
+    }
+
+    return snapshot;
+  }
+
   function handleTabChange(tab: AnalyticsTabId) {
     syncUrl(queryFilters, tab);
+    void loadAnalytics(queryFilters, { tab });
   }
 
   function openFilters() {
@@ -309,171 +512,80 @@ export function AnalyticsManager({
   }
 
   const loadAnalytics = useCallback(
-    async (query: AnalyticsQuery = queryFilters) => {
-      setIsLoading(true);
+    async (
+      query: AnalyticsQuery = queryFilters,
+      options?: { tab?: AnalyticsTabId; silent?: boolean },
+    ) => {
+      const targetTab = options?.tab ?? activeTab;
+      const loadKeys = getAnalyticsTabLoadKeys(targetTab);
+      const cacheKey = analyticsCacheKey(query, targetTab);
+      const cached = getCached<AnalyticsTabSnapshot>(cacheKey);
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
 
-      const failures: string[] = [];
+      if (cached) {
+        applyAnalyticsSnapshot(cached);
+      } else if (!options?.silent) {
+        setIsRefreshing(true);
+      }
 
       try {
-        const results = await Promise.allSettled([
-          getAnalyticsSummary(getAuthToken, query),
-          getInstrumentPerformance(getAuthToken, query),
-          getSessionDashboard(getAuthToken, query),
-          getStrategyPerformance(getAuthToken, query),
-          getPlanCompliance(getAuthToken, query),
-          getRiskStats(getAuthToken, query),
-          getTimeAnalytics(getAuthToken, query),
-          getHeatmapAnalytics(getAuthToken, query, heatmapMetric),
-          getPsychologyAnalytics(getAuthToken, query),
-          getMistakeAnalytics(getAuthToken, query),
-          getDurationAnalytics(getAuthToken, query),
-          getRollingPerformance(getAuthToken, query),
-          getPeriodComparison(
-            getAuthToken,
-            query,
+        const sections = await fetchAnalyticsSections(
+          loadKeys,
+          getAuthToken,
+          query,
+          {
             comparisonMode,
-            comparisonMode === "CUSTOM" ? customDates : undefined,
-          ),
-          getDirectionAnalytics(getAuthToken, query),
-          getTagAnalytics(getAuthToken, query),
-          getConcentrationAnalytics(getAuthToken, query),
-          getInsightsAnalytics(getAuthToken, query),
-        ]);
+            customDates,
+            heatmapMetric,
+          },
+        );
 
-        const [
-          summaryResult,
-          instrumentsResult,
-          sessionDashboardResult,
-          strategiesResult,
-          planComplianceResult,
-          riskStatsResult,
-          timeResult,
-          heatmapResult,
-          psychologyResult,
-          mistakesResult,
-          durationResult,
-          rollingResult,
-          comparisonResult,
-          directionResult,
-          tagsResult,
-          concentrationResult,
-          insightsResult,
-        ] = results;
-
-        if (summaryResult.status === "fulfilled") {
-          setSummary(summaryResult.value.data);
-        } else {
-          failures.push("overview");
+        if (requestIdRef.current !== requestId) {
+          return;
         }
 
-        if (instrumentsResult.status === "fulfilled") {
-          setInstruments(instrumentsResult.value.data);
-        } else {
-          failures.push("instruments");
-        }
+        const failures = loadKeys
+          .filter((key) => !sections[key])
+          .map((key) => SECTION_FAILURE_LABELS[key]);
 
-        if (sessionDashboardResult.status === "fulfilled") {
-          setSessionDashboard(sessionDashboardResult.value.data);
-        } else {
-          failures.push("sessions");
-        }
+        const snapshot = buildSnapshotFromSections(sections);
+        setCached(cacheKey, snapshot);
+        applyAnalyticsSnapshot(snapshot);
 
-        if (strategiesResult.status === "fulfilled") {
-          setStrategyRows(strategiesResult.value.data);
-        } else {
-          failures.push("strategies");
-        }
-
-        if (planComplianceResult.status === "fulfilled") {
-          setPlanCompliance(planComplianceResult.value.data);
-        } else {
-          failures.push("plan compliance");
-        }
-
-        if (riskStatsResult.status === "fulfilled") {
-          setRiskStats(riskStatsResult.value.data);
-        } else {
-          failures.push("risk");
-        }
-
-        if (timeResult.status === "fulfilled") {
-          setTimeAnalytics(timeResult.value.data);
-        } else {
-          failures.push("time");
-        }
-
-        if (heatmapResult.status === "fulfilled") {
-          setHeatmapCells(heatmapResult.value.data.cells);
-        } else {
-          failures.push("heatmap");
-        }
-
-        if (psychologyResult.status === "fulfilled") {
-          setPsychology(psychologyResult.value.data);
-        } else {
-          failures.push("psychology");
-        }
-
-        if (mistakesResult.status === "fulfilled") {
-          setMistakeAnalytics(mistakesResult.value.data);
-        } else {
-          failures.push("mistakes");
-        }
-
-        if (durationResult.status === "fulfilled") {
-          setDurationAnalytics(durationResult.value.data);
-        } else {
-          failures.push("duration");
-        }
-
-        if (rollingResult.status === "fulfilled") {
-          setRolling(rollingResult.value.data);
-        } else {
-          failures.push("rolling");
-        }
-
-        if (comparisonResult.status === "fulfilled") {
-          setComparison(comparisonResult.value.data);
-        } else {
-          failures.push("comparison");
-        }
-
-        if (directionResult.status === "fulfilled") {
-          setDirectionAnalytics(directionResult.value.data);
-        } else {
-          failures.push("direction");
-        }
-
-        if (tagsResult.status === "fulfilled") {
-          setTagAnalytics(tagsResult.value.data);
-        } else {
-          failures.push("tags");
-        }
-
-        if (concentrationResult.status === "fulfilled") {
-          setConcentrationAnalytics(concentrationResult.value.data);
-        } else {
-          failures.push("concentration");
-        }
-
-        if (insightsResult.status === "fulfilled") {
-          setInsightsAnalytics(insightsResult.value.data);
-        } else {
-          failures.push("insights");
-        }
-
-        if (failures.length > 0) {
+        if (failures.length > 0 && !cached) {
           toast.error(
-            failures.length === results.length
+            failures.length === loadKeys.length
               ? "Failed to load analytics."
               : `Some analytics sections failed to load: ${failures.join(", ")}.`,
           );
         }
+      } catch (error) {
+        if (requestIdRef.current !== requestId) {
+          return;
+        }
+
+        if (!cached) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to load analytics.",
+          );
+        }
       } finally {
-        setIsLoading(false);
+        if (requestIdRef.current === requestId) {
+          setIsRefreshing(false);
+        }
       }
     },
-    [comparisonMode, customDates, getAuthToken, heatmapMetric, queryFilters],
+    [
+      activeTab,
+      comparisonMode,
+      customDates,
+      getAuthToken,
+      heatmapMetric,
+      queryFilters,
+    ],
   );
 
   useAutoReloadOnAccountChange(
@@ -481,7 +593,10 @@ export function AnalyticsManager({
     accountId,
     () => loadAnalytics(),
     {
-      skipInitial: false,
+      skipInitial: shouldSkipServerMatchedAccountLoad(
+        accountId,
+        serverSelectedAccountId,
+      ),
       consumeSkipReload: () => {
         if (!skipAccountReloadRef.current) {
           return false;
@@ -564,7 +679,7 @@ export function AnalyticsManager({
   }
 
   return (
-    <div className="space-y-6">
+    <div className={cn("space-y-6", isRefreshing && "opacity-90")}>
       <PageHeader
         eyebrow="Analytics"
         title="Advanced analytics"
@@ -580,7 +695,7 @@ export function AnalyticsManager({
         accountId={accountId}
         activeFilterCount={activeFilterCount}
         filtersOpen={filtersOpen}
-        isLoading={isLoading}
+        isLoading={isRefreshing}
         onToggleOpen={toggleFilters}
         onChange={handleFiltersChange}
         onAccountChange={handleAccountFilterChange}
@@ -782,7 +897,7 @@ export function AnalyticsManager({
             comparison={comparison}
             mode={comparisonMode}
             customDates={customDates}
-            isLoading={isLoading}
+            isLoading={isRefreshing}
             onModeChange={setComparisonMode}
             onCustomDatesChange={(field, value) =>
               setCustomDates((current) => ({ ...current, [field]: value }))

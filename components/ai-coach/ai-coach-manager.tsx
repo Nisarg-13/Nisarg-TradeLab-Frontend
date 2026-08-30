@@ -3,19 +3,17 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  Ban,
   BarChart3,
   Bot,
-  Clock,
   Lightbulb,
   Shield,
   Sparkles,
-  Target,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { AiCoachChat } from "@/components/ai-coach/ai-coach-chat";
 import { AiCoachGeneratingOverlay } from "@/components/ai-coach/ai-coach-generating-overlay";
 import { FormattedDateTime } from "@/components/formatting/formatted-datetime";
 import { PageHeader } from "@/components/layout/page-header";
@@ -30,7 +28,6 @@ import {
 } from "@/components/ui/card";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   askAiJournal,
   generateAiAnalysis,
@@ -47,7 +44,6 @@ import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type {
   AiAnalysis,
-  AiChatAnswer,
   AiChatMessage,
   AiPeriodPreset,
   SampleConfidence,
@@ -125,56 +121,6 @@ function BulletSection({
   );
 }
 
-function ChatAnswerSections({ answer }: { answer: AiChatAnswer }) {
-  return (
-    <div className="space-y-4">
-      <p className="text-foreground/90 leading-relaxed">{answer.summary}</p>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <BulletSection
-          title="What you're doing best"
-          items={answer.strengths ?? []}
-          icon={TrendingUp}
-          tone="positive"
-        />
-        <BulletSection
-          title="What's hurting your results"
-          items={answer.weaknesses ?? []}
-          icon={TrendingDown}
-          tone="negative"
-        />
-        <BulletSection
-          title="What to avoid"
-          items={answer.avoid ?? []}
-          icon={Ban}
-          tone="warning"
-        />
-        <BulletSection
-          title="What to focus on"
-          items={answer.focus ?? []}
-          icon={Target}
-          tone="accent"
-        />
-        <BulletSection
-          title="Instrument insights"
-          description="Performance by symbol in the selected scope."
-          items={answer.instruments ?? []}
-          icon={BarChart3}
-        />
-        <BulletSection
-          title="Supporting evidence"
-          items={answer.evidence ?? []}
-        />
-        <BulletSection
-          title="Limitations"
-          items={answer.limitations ?? []}
-          icon={AlertTriangle}
-        />
-      </div>
-    </div>
-  );
-}
-
 export function AiCoachManager({
   accounts,
   initialAnalyses,
@@ -195,7 +141,6 @@ export function AiCoachManager({
   const [chatHistory, setChatHistory] = useState(initialChatHistory);
   const [periodPreset, setPeriodPreset] =
     useState<AiPeriodPreset>(DEFAULT_AI_PERIOD);
-  const [question, setQuestion] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
 
@@ -293,28 +238,21 @@ export function AiCoachManager({
     }
   }
 
-  async function handleAskQuestion() {
-    if (!question.trim()) {
-      toast.error("Enter a question first.");
-      return;
-    }
-
+  async function handleAskQuestion(question: string) {
     setIsAsking(true);
 
     try {
       const response = await askAiJournal(getAuthToken, {
-        question: question.trim(),
+        question,
         ...scopeQuery,
       });
-      await refreshHistory();
-      setQuestion("");
-      setTab("chat");
-      toast.success("Answer ready.");
-      void response;
+      setChatHistory((current) => [response.data, ...current]);
+      return response.data;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to ask your journal.",
       );
+      return null;
     } finally {
       setIsAsking(false);
     }
@@ -522,82 +460,12 @@ export function AiCoachManager({
       ) : null}
 
       {tab === "chat" ? (
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ask My Journal</CardTitle>
-              <CardDescription>
-                Ask for coaching on strengths, weaknesses, instruments, timing,
-                and what to focus on. Answers respect the account and period
-                selected above.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="coach-question">Question</Label>
-                <Textarea
-                  id="coach-question"
-                  rows={3}
-                  value={question}
-                  onChange={(event) => setQuestion(event.target.value)}
-                  placeholder="How should I trade today? What am I doing best and what should I avoid?"
-                />
-              </div>
-              <Button
-                type="button"
-                disabled={isAsking}
-                onClick={handleAskQuestion}
-              >
-                {isAsking ? "Thinking..." : "Ask"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-4">
-            {filteredChatHistory.length === 0 ? (
-              <Card>
-                <CardContent className="text-muted-foreground py-8 text-sm">
-                  Your Q&A history will appear here for the selected account.
-                </CardContent>
-              </Card>
-            ) : (
-              filteredChatHistory.map((message) => (
-                <Card key={message.id}>
-                  <CardHeader className="gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CardTitle className="text-base">
-                        {message.question}
-                      </CardTitle>
-                      <Badge variant="outline">{message.answer.intent}</Badge>
-                      <Badge
-                        className={confidenceTone(message.answer.confidence)}
-                      >
-                        {message.answer.confidence}
-                      </Badge>
-                      {message.answer.periodLabel ? (
-                        <Badge variant="outline">
-                          {message.answer.periodLabel}
-                        </Badge>
-                      ) : null}
-                      {message.answer.timezone ? (
-                        <Badge variant="outline" className="gap-1">
-                          <Clock className="size-3" aria-hidden="true" />
-                          {message.answer.timezone}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <CardDescription>
-                      <FormattedDateTime value={message.createdAt} />
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ChatAnswerSections answer={message.answer} />
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        </div>
+        <AiCoachChat
+          key={selectedAccountId || "all"}
+          messages={filteredChatHistory}
+          isAsking={isAsking}
+          onAsk={handleAskQuestion}
+        />
       ) : null}
 
       {tab === "history" ? (

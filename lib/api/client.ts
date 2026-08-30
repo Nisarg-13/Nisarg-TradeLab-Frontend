@@ -1,3 +1,5 @@
+import { resolveBackendBaseUrlFromEnv } from "@/lib/api/backend-url";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -16,15 +18,47 @@ export type ApiClientOptions = {
 };
 
 const BACKEND_PROXY_PREFIX = "/backend-proxy";
+const DEFAULT_API_TIMEOUT_MS = 10_000;
 
-function resolveBackendBaseUrl(): string {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+function mergeAbortSignals(
+  ...signals: Array<AbortSignal | undefined>
+): AbortSignal | undefined {
+  const active = signals.filter(Boolean) as AbortSignal[];
 
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured");
+  if (active.length === 0) {
+    return undefined;
   }
 
-  return baseUrl.replace(/\/$/, "");
+  if (active.length === 1) {
+    return active[0];
+  }
+
+  const controller = new AbortController();
+
+  for (const signal of active) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      return controller.signal;
+    }
+
+    signal.addEventListener("abort", () => controller.abort(signal.reason), {
+      once: true,
+    });
+  }
+
+  return controller.signal;
+}
+
+function createRequestTimeoutSignal(): AbortSignal | undefined {
+  if (typeof AbortSignal.timeout === "function") {
+    return AbortSignal.timeout(DEFAULT_API_TIMEOUT_MS);
+  }
+
+  return undefined;
+}
+
+function resolveBackendBaseUrl(): string {
+  return resolveBackendBaseUrlFromEnv();
 }
 
 function getBaseUrl(): string {
@@ -49,7 +83,7 @@ export async function apiRequest<T>(
   try {
     response = await fetch(url, {
       ...init,
-      signal,
+      signal: mergeAbortSignals(signal, createRequestTimeoutSignal()),
       headers: {
         "Content-Type": "application/json",
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -58,8 +92,14 @@ export async function apiRequest<T>(
     });
   } catch (error) {
     const backendUrl = resolveBackendBaseUrl();
+    const timedOut =
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError");
+
     throw new ApiError(
-      `Unable to reach the API at ${backendUrl}. If this persists, verify NEXT_PUBLIC_API_BASE_URL on Vercel and that the FastAPI backend is running.`,
+      timedOut
+        ? `API request timed out after ${DEFAULT_API_TIMEOUT_MS / 1000}s at ${backendUrl}. Is the FastAPI backend running on port 3001?`
+        : `Unable to reach the API at ${backendUrl}. If this persists, verify NEXT_PUBLIC_API_BASE_URL and that the FastAPI backend is running.`,
       0,
       error,
     );

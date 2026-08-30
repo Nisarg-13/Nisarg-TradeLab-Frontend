@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -23,12 +23,18 @@ import {
 } from "@/lib/api/analytics";
 import { listTrades } from "@/lib/api/trades";
 import { useClientAuthToken } from "@/lib/auth/client";
+import {
+  getCached,
+  setCached,
+  stableCacheKey,
+} from "@/lib/cache/account-data-cache";
 import { useLiveTradesRefresh } from "@/lib/hooks/use-live-trades-refresh";
 import { useFormatDateTime } from "@/lib/hooks/use-format-datetime";
 import { usePersistedAccountId } from "@/lib/hooks/use-persisted-account-id";
 import { useAutoReloadOnAccountChange } from "@/lib/hooks/use-auto-reload-on-account-change";
 import { useTradeDataRefresh } from "@/lib/hooks/use-trade-data-refresh";
 import { shouldSkipServerMatchedAccountLoad } from "@/lib/preferences/server-account-load";
+import { cn } from "@/lib/utils";
 import type { TradingAccount } from "@/types/account";
 import type {
   AnalyticsSummary,
@@ -37,6 +43,20 @@ import type {
 } from "@/types/analytics";
 import type { LiveTradesResponse } from "@/types/live-trades";
 import type { Trade } from "@/types/trade";
+
+type DashboardSnapshot = {
+  summary: AnalyticsSummary;
+  instruments: InstrumentPerformance[];
+  strategies: StrategyPerformance[];
+  recentTrades: Trade[];
+};
+
+function dashboardCacheKey(accountId: string) {
+  return stableCacheKey({
+    scope: "dashboard",
+    accountId: accountId || "__all__",
+  });
+}
 
 export function DashboardManager({
   accounts,
@@ -68,7 +88,23 @@ export function DashboardManager({
   const [instruments, setInstruments] = useState(initialInstruments);
   const [strategies, setStrategies] = useState(initialStrategies);
   const [recentTrades, setRecentTrades] = useState(initialRecentTrades);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    setCached(dashboardCacheKey(serverSelectedAccountId), {
+      summary: initialSummary,
+      instruments: initialInstruments,
+      strategies: initialStrategies,
+      recentTrades: initialRecentTrades,
+    });
+  }, [
+    initialInstruments,
+    initialRecentTrades,
+    initialStrategies,
+    initialSummary,
+    serverSelectedAccountId,
+  ]);
 
   const { positions, lastMt5SnapshotAt, refreshLiveTrades } =
     useLiveTradesRefresh({
@@ -76,10 +112,7 @@ export function DashboardManager({
       initialData: initialLiveTrades,
       isReady,
       limit: 5,
-      skipInitialRefresh: shouldSkipServerMatchedAccountLoad(
-        accountId,
-        serverSelectedAccountId,
-      ),
+      skipInitialRefresh: false,
     });
 
   const accountOptions = [
@@ -91,7 +124,19 @@ export function DashboardManager({
   ];
 
   const handleApplyFilter = useCallback(async () => {
-    setIsLoading(true);
+    const cacheKey = dashboardCacheKey(accountId);
+    const cached = getCached<DashboardSnapshot>(cacheKey);
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+
+    if (cached) {
+      setSummary(cached.summary);
+      setInstruments(cached.instruments);
+      setStrategies(cached.strategies);
+      setRecentTrades(cached.recentTrades);
+    } else {
+      setIsRefreshing(true);
+    }
 
     try {
       const query = accountId ? { tradingAccountId: accountId } : {};
@@ -111,17 +156,37 @@ export function DashboardManager({
         }),
       ]);
 
-      setSummary(summaryResponse.data);
-      setInstruments(instrumentsResponse.data);
-      setStrategies(strategiesResponse.data);
-      setRecentTrades(recentTradesResponse.data);
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
+
+      const snapshot: DashboardSnapshot = {
+        summary: summaryResponse.data,
+        instruments: instrumentsResponse.data,
+        strategies: strategiesResponse.data,
+        recentTrades: recentTradesResponse.data,
+      };
+
+      setCached(cacheKey, snapshot);
+      setSummary(snapshot.summary);
+      setInstruments(snapshot.instruments);
+      setStrategies(snapshot.strategies);
+      setRecentTrades(snapshot.recentTrades);
       await refreshLiveTrades({ silent: true });
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to refresh dashboard.",
-      );
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
+
+      if (!cached) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to refresh dashboard.",
+        );
+      }
     } finally {
-      setIsLoading(false);
+      if (requestIdRef.current === requestId) {
+        setIsRefreshing(false);
+      }
     }
   }, [accountId, getAuthToken, refreshLiveTrades]);
 
@@ -135,7 +200,7 @@ export function DashboardManager({
   useTradeDataRefresh(isReady, handleApplyFilter);
 
   return (
-    <div className="space-y-6">
+    <div className={cn("space-y-6", isRefreshing && "opacity-90")}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <PageHeader
           eyebrow="Dashboard"
@@ -154,7 +219,6 @@ export function DashboardManager({
             options={accountOptions}
             value={accountId}
             onValueChange={setAccountId}
-            disabled={isLoading}
           />
         </div>
       </div>

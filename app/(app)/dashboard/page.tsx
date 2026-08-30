@@ -5,7 +5,6 @@ import {
   getInstrumentPerformance,
   getStrategyPerformance,
 } from "@/lib/api/analytics";
-import { getLiveTrades } from "@/lib/api/live-trades";
 import { listTrades } from "@/lib/api/trades";
 import { getServerAuthToken } from "@/lib/auth/server";
 import { getServerAppContext } from "@/lib/server/app-context";
@@ -30,7 +29,6 @@ export default async function DashboardPage() {
     instrumentsResult,
     strategiesResult,
     recentTradesResult,
-    liveTradesResult,
   ] = await Promise.all([
     getAnalyticsSummary(getServerAuthToken, query)
       .then((response) => response.data)
@@ -48,9 +46,6 @@ export default async function DashboardPage() {
     })
       .then((response) => response.data)
       .catch(() => [] as Trade[]),
-    getLiveTrades(getServerAuthToken, query)
-      .then((response) => response.data)
-      .catch(() => EMPTY_LIVE_TRADES),
   ]);
 
   return (
@@ -61,7 +56,7 @@ export default async function DashboardPage() {
       initialInstruments={instrumentsResult}
       initialStrategies={strategiesResult}
       initialRecentTrades={recentTradesResult}
-      initialLiveTrades={liveTradesResult}
+      initialLiveTrades={EMPTY_LIVE_TRADES}
     />
   );
 }

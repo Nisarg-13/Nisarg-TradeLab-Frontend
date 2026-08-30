@@ -41,15 +41,24 @@ function buildForwardHeaders(request: NextRequest) {
   return headers;
 }
 
-const PROXY_TIMEOUT_MS = 15_000;
+const DEFAULT_PROXY_TIMEOUT_MS = 15_000;
+const AI_PROXY_TIMEOUT_MS = 120_000;
+
+function resolveProxyTimeoutMs(path: string[]): number {
+  const joined = path.join("/");
+  return joined.startsWith("api/v1/ai")
+    ? AI_PROXY_TIMEOUT_MS
+    : DEFAULT_PROXY_TIMEOUT_MS;
+}
 
 async function proxyRequest(request: NextRequest, path: string[]) {
   const targetUrl = buildBackendUrl(path, request.nextUrl.search);
   const method = request.method.toUpperCase();
   const hasBody = !["GET", "HEAD"].includes(method);
+  const timeoutMs = resolveProxyTimeoutMs(path);
   const timeoutSignal =
     typeof AbortSignal.timeout === "function"
-      ? AbortSignal.timeout(PROXY_TIMEOUT_MS)
+      ? AbortSignal.timeout(timeoutMs)
       : undefined;
 
   const response = await fetch(targetUrl, {

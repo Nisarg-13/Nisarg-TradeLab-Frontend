@@ -15,6 +15,8 @@ export type ApiClientOptions = {
   baseUrl?: string;
   getAuthToken?: () => Promise<string | null>;
   signal?: AbortSignal;
+  /** Defaults to 10s. AI endpoints should use a longer value. */
+  timeoutMs?: number;
 };
 
 const BACKEND_PROXY_PREFIX = "/backend-proxy";
@@ -49,9 +51,11 @@ function mergeAbortSignals(
   return controller.signal;
 }
 
-function createRequestTimeoutSignal(): AbortSignal | undefined {
+function createRequestTimeoutSignal(
+  timeoutMs: number,
+): AbortSignal | undefined {
   if (typeof AbortSignal.timeout === "function") {
-    return AbortSignal.timeout(DEFAULT_API_TIMEOUT_MS);
+    return AbortSignal.timeout(timeoutMs);
   }
 
   return undefined;
@@ -74,7 +78,9 @@ export async function apiRequest<T>(
   path: string,
   options: ApiClientOptions & RequestInit = {},
 ): Promise<T> {
-  const { getAuthToken, baseUrl, signal, headers, ...init } = options;
+  const { getAuthToken, baseUrl, signal, timeoutMs, headers, ...init } =
+    options;
+  const requestTimeoutMs = timeoutMs ?? DEFAULT_API_TIMEOUT_MS;
   const url = `${baseUrl ?? getBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
   const authToken = getAuthToken ? await getAuthToken() : null;
 
@@ -83,7 +89,10 @@ export async function apiRequest<T>(
   try {
     response = await fetch(url, {
       ...init,
-      signal: mergeAbortSignals(signal, createRequestTimeoutSignal()),
+      signal: mergeAbortSignals(
+        signal,
+        createRequestTimeoutSignal(requestTimeoutMs),
+      ),
       headers: {
         "Content-Type": "application/json",
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -98,7 +107,7 @@ export async function apiRequest<T>(
 
     throw new ApiError(
       timedOut
-        ? `API request timed out after ${DEFAULT_API_TIMEOUT_MS / 1000}s at ${backendUrl}. Is the FastAPI backend running on port 3001?`
+        ? `API request timed out after ${requestTimeoutMs / 1000}s at ${backendUrl}. Is the FastAPI backend running on port 3001?`
         : `Unable to reach the API at ${backendUrl}. If this persists, verify NEXT_PUBLIC_API_BASE_URL and that the FastAPI backend is running.`,
       0,
       error,

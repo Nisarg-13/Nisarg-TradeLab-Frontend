@@ -8,6 +8,8 @@ import type {
   ApiDataResponse,
 } from "@/types/ai";
 
+const AI_REQUEST_TIMEOUT_MS = 120_000;
+
 function buildScopeQuery(params: AiScopeQuery = {}) {
   const search = new URLSearchParams();
 
@@ -29,7 +31,7 @@ export async function generateAiAnalysis(
 ) {
   return apiRequest<ApiDataResponse<AiAnalysis>>(
     `/api/v1/ai/analysis${buildScopeQuery(query)}`,
-    { method: "POST", getAuthToken },
+    { method: "POST", getAuthToken, timeoutMs: AI_REQUEST_TIMEOUT_MS },
   );
 }
 
@@ -71,6 +73,7 @@ export async function askAiJournal(
     method: "POST",
     body: JSON.stringify(input),
     getAuthToken,
+    timeoutMs: AI_REQUEST_TIMEOUT_MS,
   });
 }
 

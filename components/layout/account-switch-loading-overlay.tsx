@@ -19,6 +19,7 @@ export function AccountSwitchLoadingOverlay({
     <div className={cn("relative", className)}>
       <div
         className={cn(
+          "space-y-6",
           "transition-[opacity,filter] duration-300 ease-out",
           isLoading && "pointer-events-none opacity-35 blur-[1.5px]",
         )}

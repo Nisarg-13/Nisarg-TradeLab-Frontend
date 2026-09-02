@@ -5,6 +5,9 @@ import type {
   Mt5Connection,
 } from "@/types/mt5";
 
+/** Repair can dedupe and recalculate many MT5 trades — allow several minutes. */
+const MT5_REPAIR_REQUEST_TIMEOUT_MS = 120_000;
+
 export async function listMt5Connections(
   getAuthToken: () => Promise<string | null>,
 ) {
@@ -55,5 +58,6 @@ export async function recalculateMt5Trades(
     method: "POST",
     body: JSON.stringify({ tradingAccountId }),
     getAuthToken,
+    timeoutMs: MT5_REPAIR_REQUEST_TIMEOUT_MS,
   });
 }

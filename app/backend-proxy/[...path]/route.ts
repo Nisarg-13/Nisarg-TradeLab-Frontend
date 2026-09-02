@@ -43,12 +43,17 @@ function buildForwardHeaders(request: NextRequest) {
 
 const DEFAULT_PROXY_TIMEOUT_MS = 15_000;
 const AI_PROXY_TIMEOUT_MS = 120_000;
+const MT5_REPAIR_PROXY_TIMEOUT_MS = 120_000;
 
 function resolveProxyTimeoutMs(path: string[]): number {
   const joined = path.join("/");
-  return joined.startsWith("api/v1/ai")
-    ? AI_PROXY_TIMEOUT_MS
-    : DEFAULT_PROXY_TIMEOUT_MS;
+  if (joined.startsWith("api/v1/ai")) {
+    return AI_PROXY_TIMEOUT_MS;
+  }
+  if (joined === "api/v1/mt5/recalculate-trades") {
+    return MT5_REPAIR_PROXY_TIMEOUT_MS;
+  }
+  return DEFAULT_PROXY_TIMEOUT_MS;
 }
 
 async function proxyRequest(request: NextRequest, path: string[]) {
